@@ -1,0 +1,30 @@
+providers:
+
+  ollama:
+
+    enabled: true
+
+    models:
+
+      fast:
+        name: qwen3:0.6b
+
+      local:
+        name: qwen3:8b
+
+
+
+  openai:
+
+    enabled: true
+
+    models:
+
+      expert:
+        name: gpt-5
+
+
+
+  openrouter:
+
+    enabled: false

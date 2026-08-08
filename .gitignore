@@ -1,0 +1,66 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node.js
+node_modules/
+frontend/node_modules/
+dist/
+build/
+.next/
+.vite/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# AI models
+*.gguf
+*.bin
+*.safetensors
+
+# Local model/cache data
+models/
+.cache/
+
+# Qdrant/local storage
+qdrant_storage/
+
+# Secrets / credentials
+credentials/
+secrets/
+*.pem
+*.key
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Python coverage
+.coverage
+htmlcov/
