@@ -1,0 +1,102 @@
+import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
+import httpx
+from fastapi import FastAPI
+
+from agentgraph.api.routes import router
+from agentgraph.models.router import DisabledProvider, ModelProvider, ModelRouter
+from agentgraph.persistence.database import create_database_engine, create_session_factory
+from agentgraph.providers.ollama import OllamaProvider
+from agentgraph.providers.openai_compatible import OpenAICompatibleProvider
+from agentgraph.providers.opencode import OpenCodeBridgeProvider
+from agentgraph.runtime.graph import ModelGraphRuntime
+from agentgraph.runtime.registry import RunRegistry
+from agentgraph.services.manager import AgentManager, AgentRuntime
+from agentgraph.settings import Settings
+
+
+def create_app(
+    settings: Settings | None = None,
+    runtime: AgentRuntime | None = None,
+    configured_router: ModelRouter | None = None,
+) -> FastAPI:
+    runtime_settings = settings or Settings()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        engine = create_database_engine(runtime_settings.database_url)
+        http_client = httpx.AsyncClient(timeout=httpx.Timeout(60, connect=5), trust_env=False)
+        registry = RunRegistry()
+        manager: AgentManager | None = None
+
+        async def close_resources() -> None:
+            try:
+                await http_client.aclose()
+            finally:
+                await engine.dispose()
+
+        try:
+            if configured_router is None:
+                providers: dict[str, ModelProvider] = {
+                    "ollama": OllamaProvider(http_client, runtime_settings.ollama_base_url)
+                }
+                if runtime_settings.opencode_base_url:
+                    providers["opencode"] = OpenCodeBridgeProvider(
+                        http_client,
+                        runtime_settings.opencode_base_url,
+                        runtime_settings.opencode_basic_auth_username,
+                        runtime_settings.opencode_basic_auth_password,
+                    )
+                else:
+                    providers["opencode"] = DisabledProvider("opencode")
+                if runtime_settings.openai_compatible_base_url:
+                    providers["openrouter"] = OpenAICompatibleProvider(
+                        "openrouter",
+                        http_client,
+                        runtime_settings.openai_compatible_base_url,
+                        runtime_settings.openai_compatible_api_key,
+                    )
+                else:
+                    providers["openrouter"] = DisabledProvider("openrouter")
+                model_router = ModelRouter(providers, "ollama://qwen3-4b-nothink:latest")
+            else:
+                model_router = configured_router
+            manager = AgentManager(
+                create_session_factory(engine),
+                runtime or ModelGraphRuntime(model_router),
+                registry,
+                runtime_settings.runtime_delay_seconds,
+                runtime_settings.cancellation_timeout_seconds,
+            )
+            await manager.recover_stale_runs()
+            app.state.agent_manager = manager
+            app.state.model_router = model_router
+            yield
+        finally:
+            if manager is None:
+                await close_resources()
+            else:
+                safe_to_close = False
+                try:
+                    safe_to_close = await manager.shutdown()
+                finally:
+                    if safe_to_close:
+                        await close_resources()
+                    else:
+
+                        async def close_after_runs() -> None:
+                            try:
+                                await registry.wait_all()
+                            finally:
+                                await close_resources()
+
+                        app.state.deferred_cleanup = asyncio.create_task(close_after_runs())
+
+    app = FastAPI(title="AgentGraph OS", lifespan=lifespan)
+    app.include_router(router)
+    return app
+
+
+app = create_app()

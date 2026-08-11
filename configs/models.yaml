@@ -3,28 +3,22 @@ providers:
   ollama:
 
     enabled: true
+    base_url: http://127.0.0.1:11434
 
     models:
+
+      default:
+        name: qwen3-4b-nothink:latest
+
+      quality:
+        name: qwen3:4B
 
       fast:
-        name: qwen3:0.6b
+        name: qwen3:0.6B
 
-      local:
-        name: qwen3:8b
+  opencode:
+    # GPT Plus access is configured in OpenCode and bridged locally in Phase 3.
+    enabled: false
 
-
-
-  openai:
-
-    enabled: true
-
-    models:
-
-      expert:
-        name: gpt-5
-
-
-
-  openrouter:
-
+  openai_compatible:
     enabled: false

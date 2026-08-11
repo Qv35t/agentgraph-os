@@ -1,6 +1,7 @@
 # Environment
 .env
 .env.*
+.envrc
 !.env.example
 
 # Python
@@ -38,13 +39,17 @@ logs/
 *.sqlite
 *.sqlite3
 
-# AI models
+# AI model weights
 *.gguf
 *.bin
 *.safetensors
 
-# Local model/cache data
-models/
+# Local model/cache data. Keep metadata files under models/ versionable.
+models/**
+!models/**/*.json
+!models/**/*.yaml
+!models/**/*.yml
+!models/**/*.md
 .cache/
 
 # Qdrant/local storage

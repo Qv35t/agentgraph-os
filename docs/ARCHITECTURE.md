@@ -1,63 +1,158 @@
-# AgentGraph OS Architecture
+# AgentGraph OS — Architecture
 
+Status: living architecture document. Update it when implemented boundaries change, not for speculative code.
 
-## Overview
+## 1. Architectural style
 
+AgentGraph OS starts as a **local-first modular monolith** with clear internal boundaries.
 
-AgentGraph OS is a local-first AI agent orchestration platform.
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                       AgentGraph OS                         │
+│                                                             │
+│  Frontend / Visual Graph                                    │
+│        │                                                    │
+│        ▼                                                    │
+│  HTTP API (FastAPI)                                         │
+│        │                                                    │
+│        ▼                                                    │
+│  AgentManager / Application Services                        │
+│        │                                                    │
+│        ├────────► Persistence (SQLite early phase)          │
+│        │                                                    │
+│        ▼                                                    │
+│  LangGraph Runtime                                          │
+│        │                                                    │
+│        ├────────► ModelRouter ─► Provider adapters          │
+│        │                  ├─ Ollama                         │
+│        │                  ├─ OpenCode local bridge         │
+│        │                  └─ OpenAI-compatible provider    │
+│        │                                                    │
+│        ├────────► Memory abstraction (Phase 5)              │
+│        │                                                    │
+│        └────────► Controlled tools (later / Phase 6 path)   │
+└─────────────────────────────────────────────────────────────┘
+```
 
+## 2. Dependency direction
 
-## Main Components
+Dependencies should point inward toward project-owned contracts.
 
+```text
+API/UI
+  ↓
+Application services
+  ↓
+Domain + runtime contracts
+  ↓
+Adapters / persistence / providers
+```
 
-1. Frontend
-2. Agent Runtime
-3. Model Router
-4. Memory System
-5. Tool System
-6. Plugin System
+Rules:
 
+- API routers do not perform raw persistence queries.
+- `AgentManager` does not know provider-specific HTTP schemas.
+- LangGraph nodes depend on model/memory/tool contracts, not vendor SDK details.
+- Provider adapters may depend on `httpx` and external protocols.
+- Persistence models must not leak across the full application as the only domain representation.
 
-## Data Flow
+## 3. Core components
 
+### 3.1 Frontend
 
-User
+Planned React + TypeScript + React Flow workspace. It visualizes agents, graphs, runs, provider state, and eventually memory/tool boundaries. It is a client of backend contracts and must not duplicate backend orchestration logic.
 
-↓
+### 3.2 API
 
-Frontend
+FastAPI provides local HTTP contracts for agent lifecycle, runs, providers, and later graph/memory operations. The default listener is loopback-only.
 
-↓
+Phase 2 implementation: `backend/agentgraph/app.py` is the canonical app
+factory. Its lifespan creates the async SQLite engine, session factory,
+`AgentManager`, deterministic LangGraph runtime, and process-local
+`RunRegistry`; it recovers stale runs before serving requests and cancels live
+runs during shutdown.
 
-Agent Manager
+### 3.3 AgentManager
 
-↓
+Application service responsible for agent lifecycle and orchestration across repositories, runtime execution, cancellation, and status transitions.
 
-LangGraph
+Phase 2 implementation: `AgentManager` coordinates `AgentRepository`,
+`RunRepository`, SQLite transactions, the live `RunRegistry`, and the runtime.
+Only process-local `asyncio.Task` handles live execution; SQLite records durable
+agent and run state. Stop and shutdown cancellation are bounded; a stop timeout
+leaves the run active rather than falsely reporting it as cancelled.
+Shared HTTP/database resources are not closed underneath a cancellation-
+resistant task; its durable row is first marked failed and a deferred finalizer
+closes resources after the live task exits.
 
-↓
+### 3.4 LangGraph runtime
 
-Agents
+Executes typed graph state. The current `ModelGraphRuntime` calls `ModelRouter`
+from a typed `START -> generate -> END` graph without exposing provider HTTP
+details to lifecycle code.
 
-↓
+The current graph is compiled from `START -> execute -> END`. It accepts typed
+run state and returns the stable output `Processed: <input_text>` without any
+provider call.
 
-Tools
+### 3.5 Persistence
 
-↓
+Early backend uses SQLite, SQLAlchemy 2.x, and Alembic. Persistent run state is separate from process-local execution handles.
 
-Memory
+The Phase 2 schema is maintained by Alembic migration `20260811_0001`. It
+contains `agents` and `agent_runs`; active runs found at startup are marked
+`failed` with a restart-interruption error and their agents become `error`.
+A SQLite partial unique index enforces at most one `queued` or `running` run
+per agent, including across separate backend processes.
 
+### 3.6 Model Router
 
-## AI Providers
+A project-owned provider-agnostic layer. It resolves `model_ref`, applies explicit routing/fallback policy, invokes providers, normalizes results/errors, and exposes provider health/model discovery without leaking secrets.
 
+Phase 3 implements strict references, local-only `auto://default`, normalized
+responses/errors, safe provider visibility, and persistent normalized run
+metadata through Alembic migration `20260811_0002`.
 
-Local:
+### 3.7 Providers
 
-- Ollama
+Initial provider directions:
 
+- Ollama — local model execution.
+- OpenCode Bridge — local OpenCode Server used as an LLM transport when subscription auth is already owned/configured by OpenCode.
+- OpenAI-compatible adapter — optional path for OpenRouter and compatible APIs.
 
-Cloud:
+All three adapters are implemented. Ollama is enabled by default on loopback;
+OpenCode and OpenAI-compatible adapters remain disabled until their environment
+configuration is supplied.
 
-- OpenAI
-- OpenRouter
+### 3.8 Memory
 
+Implemented only in Phase 5. Qdrant/Mem0 are integration directions, not permission to couple the runtime to vendor APIs before the memory contracts are designed.
+
+### 3.9 Tools and automation
+
+Model text does not execute tools implicitly. Tool invocation requires typed definitions, allowlists/policy, explicit runtime handling, observable input/output, cancellation, timeouts, and security review.
+
+## 4. Runtime state vs persistent state
+
+Persistent state records durable agent/run history. Process-local registries track live execution handles such as `asyncio.Task` objects. After restart, persisted `running` state must be recovered to a truthful terminal state rather than assumed to still be active.
+
+## 5. Data and secrets boundary
+
+Allowed persistent data can include agent definitions, graph definitions, run metadata, normalized model metadata, memory records, and user-owned project state.
+
+Do not persist provider OAuth tokens, API keys, Basic Auth passwords, Authorization headers, or copied OpenCode credential files.
+
+## 6. Network boundary
+
+Default local services:
+
+- AgentGraph backend: `127.0.0.1`.
+- Ollama: normally local loopback.
+- OpenCode Server bridge: loopback endpoint managed separately from AgentGraph.
+
+External provider traffic is opt-in and must not be required for application startup.
+
+## 7. Future architecture
+
+Post-MVP work may add richer tool/plugin/MCP surfaces, multi-agent orchestration, packaging, and optional service separation. These are not current architectural commitments until recorded in ADRs.

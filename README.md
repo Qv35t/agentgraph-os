@@ -40,4 +40,43 @@ Mem0
 
 ## Status
 
-Early development
+Phase 3 - Model Router and Providers is complete. Phase 4 - Visual Interface is
+next but has not started.
+
+## Local model direction
+
+- Default local: `qwen3-4b-nothink:latest`
+- Local quality: `qwen3:4B`
+- Local fast: `qwen3:0.6B`
+- GPT Plus uses the optional local OpenCode Server bridge, not an OpenAI API key.
+
+## Verification
+
+Run the Foundation check from the repository root:
+
+```bash
+pnpm check
+```
+
+The check runs Foundation validation, Ruff, mypy, and mocked/isolated backend
+tests. It does not call Ollama, OpenCode, or cloud providers.
+
+## Backend Development
+
+Install the locked backend dependencies:
+
+```bash
+uv sync --directory backend --all-groups
+```
+
+Apply the local SQLite migration and start the loopback-only backend:
+
+```bash
+uv run --directory backend alembic upgrade head
+uv run --directory backend uvicorn agentgraph.app:app --host 127.0.0.1 --port 8000
+```
+
+The API includes `GET /health`, provider discovery at `GET /api/providers`,
+agent lifecycle endpoints under `/api/agents`, and run lifecycle endpoints
+under `/api/runs`. Optional provider credentials are configured only through
+local environment variables based on `.env.example`.
