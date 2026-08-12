@@ -18,3 +18,7 @@ class Settings(BaseSettings):
     opencode_basic_auth_password: str | None = None
     openai_compatible_base_url: str | None = None
     openai_compatible_api_key: str | None = None
+    project_id: str = "project_local"
+    remote_control_enabled: bool = False
+    remote_control_policies: str = "{}"
+    legacy_api_enabled: bool = False

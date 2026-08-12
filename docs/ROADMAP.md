@@ -63,9 +63,25 @@ Deliver:
 
 Gate: `docs/phases/PHASE_03_MODEL_ROUTER_REAL_LLM_PROVIDERS.md`.
 
+## Remote Interface Foundation
+
+**Status:** Implemented as a compatibility foundation alongside the completed
+Phase 3 backend; it does not start Phase 4.
+
+Delivered: normalized remote events and commands, a transport-neutral event bus,
+versioned REST and WebSocket contracts, server-side authorization, and a
+process-local approval contract. Future work builds on these shared contracts:
+
+- Web interface, responsive/mobile UI, approvals UI, logs, and PWA support;
+- messaging gateway, Telegram notifications/control/approvals, then Discord,
+  WhatsApp, and Slack adapters;
+- a thin TUI dashboard for runs, providers, logs, and approvals.
+
+These clients must not duplicate orchestration or become a runtime authority.
+
 ## Phase 4 — Visual Interface
 
-**Status:** PLANNED.
+**Status:** IMPLEMENTED, pending documented browser manual acceptance.
 
 Goal: create the first practical React/TypeScript + React Flow workspace over the stable backend contracts.
 
@@ -78,6 +94,14 @@ Deliver:
 - provider/model selection based on backend discovery;
 - error and loading states;
 - responsive/accessibility baseline.
+
+Delivered:
+
+- Vite/React browser workspace with typed API client and normalized WebSocket events;
+- dashboard, projects, agents, persisted visual graphs, run workspace, approvals,
+  providers, events, and client preferences;
+- responsive dark technical layout, state/error handling, and frontend tests;
+- API graph persistence operation secured through the shared command boundary.
 
 Do not move orchestration business logic into the browser.
 

@@ -34,7 +34,7 @@ def database_url(database_path: Path) -> str:
 @pytest.fixture
 def settings(database_url: str) -> Settings:
     upgrade_database(database_url)
-    return Settings(database_url=database_url)
+    return Settings(database_url=database_url, legacy_api_enabled=True)
 
 
 @pytest.fixture
@@ -43,5 +43,7 @@ def client(settings: Settings) -> Generator[TestClient, None, None]:
         {provider_id: DisabledProvider(provider_id) for provider_id in ("ollama", "opencode", "openrouter")},
         "ollama://qwen3-4b-nothink:latest",
     )
-    with TestClient(create_app(settings, DeterministicGraphRuntime(), router)) as test_client:
+    with TestClient(
+        create_app(settings.model_copy(update={"legacy_api_enabled": True}), DeterministicGraphRuntime(), router)
+    ) as test_client:
         yield test_client

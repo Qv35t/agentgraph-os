@@ -90,8 +90,8 @@ try {
   failures.push("Invalid JSON: opencode.json");
 }
 
-if (packageConfig?.scripts?.check !== "node scripts/check-phase3.mjs") {
-  failures.push("package.json must run the Phase 3 check through pnpm check");
+if (!["node scripts/check-phase3.mjs", "node scripts/check-phase4.mjs"].includes(packageConfig?.scripts?.check)) {
+  failures.push("package.json must run a supported project check through pnpm check");
 }
 
 for (const entry of [".env", ".env.*", ".envrc", "credentials/", "secrets/", "*.pem", "*.key"]) {

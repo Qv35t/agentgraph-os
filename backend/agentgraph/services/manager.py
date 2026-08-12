@@ -14,11 +14,13 @@ from agentgraph.domain.entities import (
     AgentStatus,
     RunStatus,
 )
+from agentgraph.domain.remote import RuntimeEvent, RuntimeEventType
 from agentgraph.models.contracts import ModelResponse, ModelRouterError
 from agentgraph.persistence.database import SessionFactory
 from agentgraph.persistence.models import AgentRecord, AgentRunRecord
 from agentgraph.repositories.agents import AgentRepository
 from agentgraph.repositories.runs import RunRepository
+from agentgraph.runtime.events import RuntimeEventBus
 from agentgraph.runtime.registry import RunRegistry
 from agentgraph.services.errors import AgentNotFoundError, LifecycleConflictError, RunNotFoundError
 
@@ -37,6 +39,8 @@ class AgentManager:
         registry: RunRegistry,
         runtime_delay_seconds: float,
         cancellation_timeout_seconds: float,
+        events: RuntimeEventBus | None = None,
+        project_id: str = "project_local",
     ) -> None:
         self._session_factory = session_factory
         self._runtime = runtime
@@ -46,6 +50,8 @@ class AgentManager:
         self._agent_repository = AgentRepository()
         self._run_repository = RunRepository()
         self._agent_locks: dict[UUID, asyncio.Lock] = {}
+        self._events = events
+        self._project_id = project_id
 
     async def create_agent(
         self,
@@ -78,6 +84,17 @@ class AgentManager:
             if record is None:
                 raise AgentNotFoundError
             return _agent_from_record(record)
+
+    async def update_agent_graph(self, agent_id: UUID, graph_definition: dict[str, object]) -> Agent:
+        async with self._lock_for(agent_id):
+            async with self._session_factory() as session:
+                record = await self._agent_repository.get(session, agent_id)
+                if record is None:
+                    raise AgentNotFoundError
+                await self._agent_repository.update_graph(session, record, graph_definition)
+                await session.commit()
+                await session.refresh(record)
+                return _agent_from_record(record)
 
     async def delete_agent(self, agent_id: UUID) -> None:
         async with self._lock_for(agent_id):
@@ -112,6 +129,9 @@ class AgentManager:
             run_id = UUID(run.id)
             task = asyncio.create_task(self._execute_run(run_id), name=f"agent-run-{run_id}")
             self._registry.register(run_id, task)
+            await self._publish(
+                RuntimeEventType.RUN_CREATED, run_id=run.id, agent_id=agent.id, payload={"status": run.status}
+            )
             return _run_from_record(run)
 
     async def get_run(self, run_id: UUID) -> AgentRun:
@@ -199,6 +219,12 @@ class AgentManager:
             record.status = RunStatus.RUNNING
             record.started_at = _utc_now()
             await session.commit()
+            await self._publish(
+                RuntimeEventType.RUN_STARTED,
+                run_id=record.id,
+                agent_id=record.agent_id,
+                payload={"status": record.status},
+            )
             return _run_from_record(record)
 
     async def _finish_succeeded(self, run_id: UUID, response: ModelResponse) -> None:
@@ -220,6 +246,13 @@ class AgentManager:
             if agent is not None:
                 agent.status = AgentStatus.IDLE
             await session.commit()
+            await self._publish(
+                RuntimeEventType.RUN_COMPLETED,
+                run_id=record.id,
+                agent_id=record.agent_id,
+                provider_id=response.provider_id,
+                payload={"status": record.status, "model_id": response.model_id},
+            )
 
     async def _finish_cancelled(self, run_id: UUID) -> None:
         async with self._session_factory() as session:
@@ -232,6 +265,12 @@ class AgentManager:
             if agent is not None:
                 agent.status = AgentStatus.IDLE
             await session.commit()
+            await self._publish(
+                RuntimeEventType.RUN_CANCELLED,
+                run_id=record.id,
+                agent_id=record.agent_id,
+                payload={"status": record.status},
+            )
 
     async def _finish_failed(self, run_id: UUID, error: str) -> None:
         async with self._session_factory() as session:
@@ -245,9 +284,41 @@ class AgentManager:
             if agent is not None:
                 agent.status = AgentStatus.ERROR
             await session.commit()
+            await self._publish(
+                RuntimeEventType.RUN_FAILED,
+                run_id=record.id,
+                agent_id=record.agent_id,
+                payload={"status": record.status, "error": error},
+                severity="error",
+            )
 
     def _lock_for(self, agent_id: UUID) -> asyncio.Lock:
         return self._agent_locks.setdefault(agent_id, asyncio.Lock())
+
+    async def _publish(
+        self,
+        type: RuntimeEventType,
+        *,
+        run_id: str | None = None,
+        agent_id: str | None = None,
+        provider_id: str | None = None,
+        payload: dict[str, object] | None = None,
+        severity: str = "info",
+    ) -> None:
+        if self._events is None:
+            return
+        await self._events.publish(
+            RuntimeEvent.create(
+                type,
+                self._project_id,
+                run_id=run_id,
+                task_id=f"task_{run_id}" if run_id else None,
+                agent_id=agent_id,
+                provider_id=provider_id,
+                payload=payload or {},
+                severity=severity,
+            )
+        )
 
 
 def _utc_now() -> datetime:

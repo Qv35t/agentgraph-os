@@ -79,7 +79,7 @@ def test_run_executes_real_compiled_langgraph(client: TestClient) -> None:
 
 
 def test_active_run_conflict_and_real_cancellation(database_url: str) -> None:
-    settings = Settings(database_url=database_url, runtime_delay_seconds=1)
+    settings = Settings(database_url=database_url, runtime_delay_seconds=1, legacy_api_enabled=True)
     upgrade_database(database_url)
 
     with TestClient(create_app(settings, DeterministicGraphRuntime())) as client:
@@ -300,7 +300,9 @@ def test_startup_recovers_stale_run(database_url: str) -> None:
 
     asyncio.run(seed_stale_run())
 
-    with TestClient(create_app(Settings(database_url=database_url), DeterministicGraphRuntime())) as client:
+    with TestClient(
+        create_app(Settings(database_url=database_url, legacy_api_enabled=True), DeterministicGraphRuntime())
+    ) as client:
         recovered_run = client.get(f"/api/runs/{run_id}")
         assert recovered_run.status_code == 200
         assert recovered_run.json()["status"] == "failed"

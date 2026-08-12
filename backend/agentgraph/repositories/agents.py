@@ -35,3 +35,10 @@ class AgentRepository:
 
     async def delete(self, session: AsyncSession, record: AgentRecord) -> None:
         await session.delete(record)
+
+    async def update_graph(
+        self, session: AsyncSession, record: AgentRecord, graph_definition: dict[str, object]
+    ) -> AgentRecord:
+        record.graph_definition = graph_definition
+        await session.flush()
+        return record

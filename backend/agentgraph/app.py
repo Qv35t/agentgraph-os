@@ -3,17 +3,21 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 
+from agentgraph.api.remote import remote_router
 from agentgraph.api.routes import router
 from agentgraph.models.router import DisabledProvider, ModelProvider, ModelRouter
 from agentgraph.persistence.database import create_database_engine, create_session_factory
 from agentgraph.providers.ollama import OllamaProvider
 from agentgraph.providers.openai_compatible import OpenAICompatibleProvider
 from agentgraph.providers.opencode import OpenCodeBridgeProvider
+from agentgraph.runtime.events import RuntimeEventBus
 from agentgraph.runtime.graph import ModelGraphRuntime
 from agentgraph.runtime.registry import RunRegistry
 from agentgraph.services.manager import AgentManager, AgentRuntime
+from agentgraph.services.remote import ApprovalService, AuthorizationService, RemoteCommandService
 from agentgraph.settings import Settings
 
 
@@ -29,6 +33,7 @@ def create_app(
         engine = create_database_engine(runtime_settings.database_url)
         http_client = httpx.AsyncClient(timeout=httpx.Timeout(60, connect=5), trust_env=False)
         registry = RunRegistry()
+        event_bus = RuntimeEventBus()
         manager: AgentManager | None = None
 
         async def close_resources() -> None:
@@ -69,10 +74,20 @@ def create_app(
                 registry,
                 runtime_settings.runtime_delay_seconds,
                 runtime_settings.cancellation_timeout_seconds,
+                event_bus,
+                runtime_settings.project_id,
             )
             await manager.recover_stale_runs()
             app.state.agent_manager = manager
             app.state.model_router = model_router
+            app.state.event_bus = event_bus
+            authorization = AuthorizationService(
+                runtime_settings.remote_control_enabled, runtime_settings.remote_control_policies
+            )
+            app.state.authorization = authorization
+            app.state.remote_commands = RemoteCommandService(manager, model_router, authorization)
+            app.state.approvals = ApprovalService(event_bus)
+            app.state.settings = runtime_settings
             yield
         finally:
             if manager is None:
@@ -95,7 +110,16 @@ def create_app(
                         app.state.deferred_cleanup = asyncio.create_task(close_after_runs())
 
     app = FastAPI(title="AgentGraph OS", lifespan=lifespan)
-    app.include_router(router)
+
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, error: HTTPException) -> JSONResponse:
+        if isinstance(error.detail, dict) and "error" in error.detail:
+            return JSONResponse(status_code=error.status_code, content=error.detail, headers=error.headers)
+        return JSONResponse(status_code=error.status_code, content={"detail": error.detail}, headers=error.headers)
+
+    if runtime_settings.legacy_api_enabled:
+        app.include_router(router)
+    app.include_router(remote_router)
     return app
 
 

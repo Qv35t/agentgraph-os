@@ -18,9 +18,28 @@ class HealthResponse(BaseModel):
 
 
 class GraphDefinition(BaseModel):
-    """Phase 2 supports no configurable graph behavior or provider metadata."""
+    """Persisted visual graph semantics; runtime behavior remains intentionally fixed."""
 
     model_config = ConfigDict(extra="forbid")
+    nodes: list["GraphNode"] = Field(default_factory=list, max_length=100)
+    edges: list["GraphEdge"] = Field(default_factory=list, max_length=200)
+
+
+class GraphNode(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(min_length=1, max_length=100)
+    type: str = Field(default="agent", min_length=1, max_length=50)
+    label: str = Field(min_length=1, max_length=200)
+    position: tuple[float, float]
+
+
+class GraphEdge(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(min_length=1, max_length=100)
+    source: str = Field(min_length=1, max_length=100)
+    target: str = Field(min_length=1, max_length=100)
 
 
 class CreateAgentRequest(BaseModel):
@@ -45,6 +64,10 @@ class CreateAgentRequest(BaseModel):
         except ModelRouterError as error:
             raise ValueError(str(error)) from error
         return value
+
+
+class UpdateAgentGraphRequest(BaseModel):
+    graph_definition: GraphDefinition
 
 
 class RunAgentRequest(BaseModel):

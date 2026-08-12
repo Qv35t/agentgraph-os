@@ -40,8 +40,9 @@ Mem0
 
 ## Status
 
-Phase 3 - Model Router and Providers is complete. Phase 4 - Visual Interface is
-next but has not started.
+Phase 4 - Visual Interface is implemented with a React/Vite browser client over
+the versioned remote API and event stream. See `docs/PHASE_4_MANUAL_ACCEPTANCE.md`
+for the local browser acceptance procedure.
 
 ## Local model direction
 
@@ -80,3 +81,15 @@ The API includes `GET /health`, provider discovery at `GET /api/providers`,
 agent lifecycle endpoints under `/api/agents`, and run lifecycle endpoints
 under `/api/runs`. Optional provider credentials are configured only through
 local environment variables based on `.env.example`.
+
+## Frontend Development
+
+Install workspace dependencies, then start the browser client:
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Vite proxies `/api` and `/ws` to the loopback backend. Build the production
+assets with `pnpm build`; run the full repository gate with `pnpm check`.

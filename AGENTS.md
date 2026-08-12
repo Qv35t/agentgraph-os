@@ -46,8 +46,10 @@ When a referenced file is relevant, use the Read tool to load it. Do **not** pre
 | Work area | Read these files |
 |---|---|
 | Backend/API/runtime/persistence | `@docs/agent-rules/BACKEND.md`, `@docs/TESTING.md` |
+| Remote API/WebSocket/interfaces | `@docs/agent-rules/REMOTE_INTERFACES.md`, `@docs/architecture/REMOTE_INTERFACES.md`, `@docs/SECURITY.md` |
 | Model router/providers/LLM | `@docs/agent-rules/MODELS.md`, `@docs/MODEL_ROUTER.md`, `@docs/SECURITY.md` |
 | Frontend/React Flow/UI | `@docs/agent-rules/FRONTEND.md` |
+| Frontend/browser/visual interface | `@docs/agent-rules/VISUAL_INTERFACE.md`, `@docs/architecture/VISUAL_INTERFACE.md`, `@docs/agent-rules/REMOTE_INTERFACES.md` |
 | Memory/RAG/vector storage | `@docs/agent-rules/MEMORY.md`, `@docs/MEMORY.md`, `@docs/SECURITY.md` |
 | Tools/Linux automation/Lexi integration | `@docs/agent-rules/TOOLS_AND_AUTOMATION.md`, `@docs/TOOLS.md`, `@docs/SECURITY.md` |
 | Architecture changes | `@docs/ARCHITECTURE.md`, `@docs/decisions/README.md` |
@@ -132,6 +134,14 @@ Keep these synchronized with real behavior:
 - active phase file — acceptance gate and scope.
 
 Do not mark a phase complete until its acceptance gate has actually passed.
+
+## Remote interface architecture
+
+All Web, TUI, messaging, native, and API clients MUST use shared AgentGraph OS
+application/API contracts. They must not own or duplicate runtime orchestration,
+provider routing, run state, approval semantics, or authorization. Runtime and
+providers remain independent of UI and messaging SDKs; remote commands require
+server-side authorization; client connections must not determine run lifetime.
 
 ## 9. Git behavior
 

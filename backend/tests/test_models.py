@@ -329,7 +329,9 @@ def test_model_graph_persists_normalized_metadata(database_url: str) -> None:
 
     upgrade_database(database_url)
     router = ModelRouter({"ollama": StubProvider()}, "ollama://qwen3-4b-nothink:latest")
-    with TestClient(create_app(Settings(database_url=database_url), ModelGraphRuntime(router))) as client:
+    with TestClient(
+        create_app(Settings(database_url=database_url, legacy_api_enabled=True), ModelGraphRuntime(router))
+    ) as client:
         agent = client.post("/api/agents/create", json={"name": "LLM"}).json()
         run = client.post("/api/agents/run", json={"agent_id": agent["id"], "input_text": "hello"}).json()
         for _ in range(100):

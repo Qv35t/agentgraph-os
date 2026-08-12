@@ -85,6 +85,23 @@ Shared HTTP/database resources are not closed underneath a cancellation-
 resistant task; its durable row is first marked failed and a deferred finalizer
 closes resources after the live task exits.
 
+### 3.3.1 Remote interface foundation
+
+The same application remains the source of truth for future Web, TUI, and
+messaging clients. `RemoteCommandService` applies server-side authorization to
+supported versioned remote operations, while `RuntimeEventBus` fans out
+normalized, secret-redacted lifecycle events to the REST history and WebSocket
+transport. Remote control is disabled by default and approval state is currently
+process-local. See `docs/architecture/REMOTE_INTERFACES.md` for the exact
+contracts and explicit deferrals.
+
+### 3.3.2 Visual interface
+
+Phase 4 adds the React/Vite browser client in `frontend/`. It uses versioned
+remote contracts and the event stream exclusively, presents a persistent graph
+editor backed by the remote agent graph API, and never becomes lifecycle or
+authorization authority. See `docs/architecture/VISUAL_INTERFACE.md`.
+
 ### 3.4 LangGraph runtime
 
 Executes typed graph state. The current `ModelGraphRuntime` calls `ModelRouter`
