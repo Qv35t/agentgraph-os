@@ -17,6 +17,12 @@ import {
   type Run,
   type RuntimeEvent,
   type SystemInfo,
+  visionAnalysisSchema,
+  visionAssetSchema,
+  visionFolderSchema,
+  type VisionAnalysis,
+  type VisionAsset,
+  type VisionFolder,
 } from "./contracts";
 
 const apiBaseUrl = import.meta.env.VITE_AGENTGRAPH_API_URL || "/api/v1";
@@ -32,7 +38,7 @@ async function request<T>(path: string, schema: z.ZodType<T>, init?: RequestInit
   try {
     const response = await fetch(`${apiBaseUrl}${path}`, {
       ...init,
-      headers: { "Content-Type": "application/json", "X-AgentGraph-Identity": identity, ...init?.headers },
+      headers: { ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }), "X-AgentGraph-Identity": identity, ...init?.headers },
       signal: AbortSignal.timeout(10_000),
     });
     const payload: unknown = await response.json();
@@ -71,6 +77,13 @@ export const api = {
   approvals: () => request<Approval[]>("/approvals", z.array(approvalSchema)),
   approve: (id: string) => request<Approval>(`/approvals/${id}/approve`, approvalSchema, { method: "POST" }),
   reject: (id: string) => request<Approval>(`/approvals/${id}/reject`, approvalSchema, { method: "POST" }),
+  visionAssets: () => request<VisionAsset[]>("/vision/assets", z.array(visionAssetSchema)),
+  uploadVisionAsset: (file: File) => { const body = new FormData(); body.append("file", file); return request<VisionAsset>("/vision/assets", visionAssetSchema, { method: "POST", body }); },
+  visionAnalyses: () => request<VisionAnalysis[]>("/vision/analyses", z.array(visionAnalysisSchema)),
+  analyzeVisionAsset: (assetId: string, payload: { mode: string; prompt?: string | null; model?: string | null }) => request<VisionAnalysis>(`/vision/assets/${assetId}/analyses`, visionAnalysisSchema, { method: "POST", body: JSON.stringify(payload) }),
+  visionFolders: () => request<VisionFolder[]>("/vision/folders", z.array(visionFolderSchema)),
+  registerVisionFolder: (payload: { display_name: string; root: string }) => request<VisionFolder>("/vision/folders", visionFolderSchema, { method: "POST", body: JSON.stringify(payload) }),
+  scanVisionFolder: (id: string) => request<Record<string, number>>(`/vision/folders/${id}/scan`, z.record(z.number()), { method: "POST" }),
 };
 
 export const eventSocketConfig = { identity, eventSchema };

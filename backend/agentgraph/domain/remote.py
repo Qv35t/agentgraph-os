@@ -33,6 +33,13 @@ class RuntimeEventType(StrEnum):
     APPROVAL_REJECTED = "approval.rejected"
     APPROVAL_EXPIRED = "approval.expired"
     LOG_CREATED = "log.created"
+    VISION_ASSET_CREATED = "vision.asset.created"
+    VISION_ANALYSIS_QUEUED = "vision.analysis.queued"
+    VISION_ANALYSIS_STARTED = "vision.analysis.started"
+    VISION_ANALYSIS_COMPLETED = "vision.analysis.completed"
+    VISION_ANALYSIS_FAILED = "vision.analysis.failed"
+    VISION_FOLDER_SCAN_STARTED = "vision.folder.scan.started"
+    VISION_FOLDER_SCAN_COMPLETED = "vision.folder.scan.completed"
 
 
 class Permission(StrEnum):

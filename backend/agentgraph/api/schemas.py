@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from agentgraph.domain.entities import Agent, AgentRun, AgentStatus, RunStatus
+from agentgraph.domain.vision import VisionAnalysisStatus, VisionMode
 from agentgraph.models.contracts import (
     ModelErrorCode,
     ModelRef,
@@ -160,7 +161,60 @@ class ProviderStatusResponse(BaseModel):
             capabilities={
                 "chat": provider.capabilities.chat,
                 "discovery": provider.capabilities.discovery,
+                "vision": provider.capabilities.vision,
+                "image_captioning": provider.capabilities.image_captioning,
+                "ocr": provider.capabilities.ocr,
+                "grounding": provider.capabilities.grounding,
+                "ui_understanding": provider.capabilities.ui_understanding,
+                "multi_image": provider.capabilities.multi_image,
+                "function_calling": provider.capabilities.function_calling,
             },
             error_code=provider.error_code,
             error=provider.error,
         )
+
+
+class VisionAnalysisRequest(BaseModel):
+    mode: VisionMode = VisionMode.DESCRIBE
+    prompt: str | None = Field(default=None, max_length=10_000)
+    model: str | None = Field(default=None, max_length=500)
+
+
+class VisionFolderRequest(BaseModel):
+    display_name: str = Field(min_length=1, max_length=200)
+    root: str = Field(min_length=1, max_length=10_000)
+
+
+class VisionAssetResponse(BaseModel):
+    id: str
+    filename: str
+    mime_type: str
+    size_bytes: int
+    sha256: str
+    source_type: str
+    created_at: datetime
+
+
+class VisionAnalysisResponse(BaseModel):
+    id: str
+    asset_id: str
+    provider_id: str
+    model_id: str
+    mode: VisionMode
+    prompt: str | None
+    status: VisionAnalysisStatus
+    raw_text: str | None
+    description: str | None
+    ocr_text: str | None
+    structured_result: dict[str, Any] | None
+    latency_ms: int | None
+    error_code: str | None
+    created_at: datetime
+    completed_at: datetime | None
+
+
+class VisionFolderResponse(BaseModel):
+    id: str
+    display_name: str
+    enabled: bool
+    created_at: datetime

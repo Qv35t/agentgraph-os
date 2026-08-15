@@ -38,6 +38,7 @@ logs/
 *.db
 *.sqlite
 *.sqlite3
+data/vision/
 
 # AI model weights
 *.gguf
@@ -51,6 +52,7 @@ models/**
 !models/**/*.yml
 !models/**/*.md
 .cache/
+.run/
 
 # Qdrant/local storage
 qdrant_storage/

@@ -142,9 +142,13 @@ All three adapters are implemented. Ollama is enabled by default on loopback;
 OpenCode and OpenAI-compatible adapters remain disabled until their environment
 configuration is supplied.
 
-### 3.8 Memory
+### 3.8 Multimodal vision
 
-Implemented only in Phase 5. Qdrant/Mem0 are integration directions, not permission to couple the runtime to vendor APIs before the memory contracts are designed.
+Phase 5 adds local image observation through typed multimodal ModelRouter
+messages, validated generated asset storage, persisted analyses, and a
+fail-closed registered-folder boundary. Vision remains provider-agnostic and
+observation-only; see `docs/architecture/VISION.md`. Memory remains a future
+local-first extension and does not share Vision storage implicitly.
 
 ### 3.9 Tools and automation
 

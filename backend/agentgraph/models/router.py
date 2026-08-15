@@ -63,6 +63,8 @@ class ModelRouter:
             raise ModelRouterError(ModelErrorCode.PROVIDER_UNAVAILABLE, "Requested provider is unavailable")
         if not provider.capabilities.chat:
             raise ModelRouterError(ModelErrorCode.CONFIGURATION_ERROR, "Provider does not support chat")
+        if any(message.images for message in messages) and not provider.capabilities.vision:
+            raise ModelRouterError(ModelErrorCode.VISION_CAPABILITY_MISSING, "Provider does not support vision")
         request = ModelRequest(model_ref=reference, messages=tuple(messages))
         return await provider.complete(request)
 

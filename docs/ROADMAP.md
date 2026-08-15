@@ -81,7 +81,8 @@ These clients must not duplicate orchestration or become a runtime authority.
 
 ## Phase 4 — Visual Interface
 
-**Status:** IMPLEMENTED, pending documented browser manual acceptance.
+**Status:** DONE. Automated checks and owner-confirmed browser manual acceptance
+were completed on 2026-08-12.
 
 Goal: create the first practical React/TypeScript + React Flow workspace over the stable backend contracts.
 
@@ -105,22 +106,20 @@ Delivered:
 
 Do not move orchestration business logic into the browser.
 
-## Phase 5 — Memory
+## Phase 5 — Multimodal Vision Layer
 
-**Status:** PLANNED.
+**Status:** DONE. Automated checks and owner-confirmed manual acceptance are complete.
 
-Goal: introduce explicit local-first memory contracts and retrieval without coupling all runtime code to one vector vendor.
+Goal: introduce local-first, provider-agnostic image observation through the
+existing model router without computer-control actions.
 
 Deliver direction:
 
-- memory domain contract;
-- agent/workspace namespaces;
-- short/long-term lifecycle policy;
-- local vector storage integration (Qdrant direction);
-- optional Mem0 integration behind project-owned boundary;
-- retrieval injected deliberately into graph state;
-- retention/deletion controls;
-- deterministic tests with no required cloud service.
+- typed multimodal model messages and Ollama image support;
+- persisted image assets and analysis history;
+- secure upload and registered-folder scanning;
+- normalized vision events and browser Vision workspace;
+- no required model download for automated tests.
 
 ## Phase 6 — Lexi Integration
 

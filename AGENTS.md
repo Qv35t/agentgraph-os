@@ -48,6 +48,7 @@ When a referenced file is relevant, use the Read tool to load it. Do **not** pre
 | Backend/API/runtime/persistence | `@docs/agent-rules/BACKEND.md`, `@docs/TESTING.md` |
 | Remote API/WebSocket/interfaces | `@docs/agent-rules/REMOTE_INTERFACES.md`, `@docs/architecture/REMOTE_INTERFACES.md`, `@docs/SECURITY.md` |
 | Model router/providers/LLM | `@docs/agent-rules/MODELS.md`, `@docs/MODEL_ROUTER.md`, `@docs/SECURITY.md` |
+| Vision/multimodal/assets/folders | `@docs/agent-rules/VISION.md`, `@docs/architecture/VISION.md`, `@docs/SECURITY.md`, `@docs/TESTING.md` |
 | Frontend/React Flow/UI | `@docs/agent-rules/FRONTEND.md` |
 | Frontend/browser/visual interface | `@docs/agent-rules/VISUAL_INTERFACE.md`, `@docs/architecture/VISUAL_INTERFACE.md`, `@docs/agent-rules/REMOTE_INTERFACES.md` |
 | Memory/RAG/vector storage | `@docs/agent-rules/MEMORY.md`, `@docs/MEMORY.md`, `@docs/SECURITY.md` |

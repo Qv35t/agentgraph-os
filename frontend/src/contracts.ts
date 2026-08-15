@@ -94,3 +94,10 @@ export const eventSchema = z.object({
 export type RuntimeEvent = z.infer<typeof eventSchema>;
 
 export const healthSchema = z.object({ status: z.string() });
+
+export const visionAssetSchema = z.object({ id: z.string(), filename: z.string(), mime_type: z.string(), size_bytes: z.number(), sha256: z.string(), source_type: z.string(), created_at: z.string() });
+export const visionAnalysisSchema = z.object({ id: z.string(), asset_id: z.string(), provider_id: z.string(), model_id: z.string(), mode: z.enum(["describe", "detailed", "ocr", "objects", "grounding", "ui", "custom"]), prompt: z.string().nullable(), status: z.enum(["queued", "running", "completed", "failed"]), raw_text: z.string().nullable(), description: z.string().nullable(), ocr_text: z.string().nullable(), structured_result: z.record(z.unknown()).nullable(), latency_ms: z.number().nullable(), error_code: z.string().nullable(), created_at: z.string(), completed_at: z.string().nullable() });
+export const visionFolderSchema = z.object({ id: z.string(), display_name: z.string(), enabled: z.boolean(), created_at: z.string() });
+export type VisionAsset = z.infer<typeof visionAssetSchema>;
+export type VisionAnalysis = z.infer<typeof visionAnalysisSchema>;
+export type VisionFolder = z.infer<typeof visionFolderSchema>;

@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 
 from agentgraph.api.remote import remote_router
 from agentgraph.api.routes import router
+from agentgraph.api.vision import vision_router
 from agentgraph.models.router import DisabledProvider, ModelProvider, ModelRouter
 from agentgraph.persistence.database import create_database_engine, create_session_factory
 from agentgraph.providers.ollama import OllamaProvider
@@ -18,6 +19,7 @@ from agentgraph.runtime.graph import ModelGraphRuntime
 from agentgraph.runtime.registry import RunRegistry
 from agentgraph.services.manager import AgentManager, AgentRuntime
 from agentgraph.services.remote import ApprovalService, AuthorizationService, RemoteCommandService
+from agentgraph.services.vision import VisionService
 from agentgraph.settings import Settings
 
 
@@ -87,6 +89,10 @@ def create_app(
             app.state.authorization = authorization
             app.state.remote_commands = RemoteCommandService(manager, model_router, authorization)
             app.state.approvals = ApprovalService(event_bus)
+            app.state.vision_service = VisionService(
+                create_session_factory(engine), model_router, event_bus, runtime_settings
+            )
+            await app.state.vision_service.recover_stale_analyses()
             app.state.settings = runtime_settings
             yield
         finally:
@@ -95,6 +101,7 @@ def create_app(
             else:
                 safe_to_close = False
                 try:
+                    await app.state.vision_service.shutdown()
                     safe_to_close = await manager.shutdown()
                 finally:
                     if safe_to_close:
@@ -120,6 +127,7 @@ def create_app(
     if runtime_settings.legacy_api_enabled:
         app.include_router(router)
     app.include_router(remote_router)
+    app.include_router(vision_router)
     return app
 
 

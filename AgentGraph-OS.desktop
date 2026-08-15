@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=AgentGraph OS
+Comment=Start the local AgentGraph OS workspace
+Exec=/home/qv35t/Project/agentgraph-os/launch-agentgraph-os.sh
+Terminal=false
+Categories=Development;Utility;
+StartupNotify=true

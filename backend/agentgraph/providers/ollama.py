@@ -1,14 +1,16 @@
+import base64
 import time
-from dataclasses import asdict
 
 import httpx
 
 from agentgraph.models.contracts import (
     ModelErrorCode,
+    ModelMessage,
     ModelRequest,
     ModelResponse,
     ModelRouterError,
     ModelUsage,
+    ProviderCapability,
     ProviderStatus,
 )
 from agentgraph.models.router import ModelProvider
@@ -21,6 +23,16 @@ from agentgraph.providers.validation import (
 
 class OllamaProvider(ModelProvider):
     provider_id = "ollama"
+    capabilities = ProviderCapability(
+        chat=True,
+        discovery=True,
+        vision=True,
+        image_captioning=True,
+        ocr=True,
+        grounding=True,
+        ui_understanding=True,
+        multi_image=True,
+    )
 
     def __init__(self, client: httpx.AsyncClient, base_url: str = "http://127.0.0.1:11434") -> None:
         self._client = client
@@ -34,7 +46,7 @@ class OllamaProvider(ModelProvider):
                 f"{self._base_url}/api/chat",
                 json={
                     "model": model_id,
-                    "messages": [asdict(message) for message in request.messages],
+                    "messages": [_message_json(message) for message in request.messages],
                     "stream": False,
                 },
             )
@@ -84,3 +96,10 @@ class OllamaProvider(ModelProvider):
                 error_code=ModelErrorCode.PROVIDER_UNAVAILABLE,
                 error="Ollama is unavailable",
             )
+
+
+def _message_json(message: ModelMessage) -> dict[str, object]:
+    payload: dict[str, object] = {"role": message.role, "content": message.content}
+    if message.images:
+        payload["images"] = [base64.b64encode(image.data).decode("ascii") for image in message.images]
+    return payload

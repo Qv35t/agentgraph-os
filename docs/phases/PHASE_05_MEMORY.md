@@ -1,29 +1,29 @@
-# Phase 5 — Memory
+# Phase 5 — Multimodal Vision Layer
 
 ## Mission
 
-Add explicit local-first memory and retrieval to AgentGraph OS without coupling the runtime to a single storage vendor.
+Add secure, local-first multimodal image observation through existing model and
+remote-interface boundaries without coupling the application to one VLM.
 
 ## Required scope direction
 
-- project-owned memory contracts;
-- agent/workspace namespaces;
-- write/retrieve/delete lifecycle;
-- local vector store integration (Qdrant direction);
-- optional Mem0 integration only behind project-owned boundary;
-- deterministic retrieval injection into runtime state;
-- observability of what memory was used;
-- retention/deletion behavior;
-- unavailable/corrupt store handling;
-- automated tests without cloud dependency;
-- minimal UI exposure required to understand/control memory.
+- typed multimodal model parts through ModelRouter/provider contracts;
+- Ollama image adapter and discoverable vision capability;
+- validated local asset storage and persisted analysis records;
+- fail-closed registered folders and metadata-only events;
+- versioned vision API and browser Vision workspace;
+- deterministic mocked tests without downloading local models.
 
 ## Security/privacy
 
-Memory content remains local by default. Do not silently sync it to cloud providers. Deletion must be real and testable at the abstraction level.
+Images remain local by default. Do not expose arbitrary host paths, image bytes,
+base64 data, model credentials, or computer-control actions.
 
 ## Gate
 
-An agent can write scoped local memory, retrieve relevant scoped entries on a later run, use them through the explicit runtime contract, and delete them without cross-agent leakage.
+Users can upload approved image types, run a configured local vision model through
+the provider boundary, reload persisted results, and scan only registered folders
+under allowed roots. Live model and manual browser acceptance remain separate
+required gates.
 
 Refine exact storage/schema choices from the implemented Phase 4/runtime state before coding.

@@ -93,3 +93,11 @@ pnpm dev
 
 Vite proxies `/api` and `/ws` to the loopback backend. Build the production
 assets with `pnpm build`; run the full repository gate with `pnpm check`.
+
+## Desktop Launcher
+
+On Linux, run `./launch-agentgraph-os.sh` or open `AgentGraph-OS.desktop` from
+the project root. The launcher applies migrations, starts missing loopback
+backend/frontend processes, writes local logs to `.run/`, and opens the browser.
+It uses the existing local backend configuration; configure remote control or
+Vision in your user-owned environment file before launching when needed.

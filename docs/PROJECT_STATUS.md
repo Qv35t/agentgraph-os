@@ -4,8 +4,8 @@ Last updated: **2026-08-12**
 
 ## Current phase
 
-**Phase 4 - Visual Interface is implemented and undergoing final browser manual
-acceptance. It is not yet marked DONE.**
+**Phase 5 - Multimodal Vision Layer is complete. Phase 6 remains planned and has
+not started.**
 
 The Remote Interface Foundation is implemented as a Phase 3 compatibility
 extension: normalized events/commands, versioned REST and WebSocket transport,
@@ -15,7 +15,7 @@ the full backend suite (`42 passed`) on 2026-08-11. It does not begin Phase 4.
 Phase 4 automated verification on 2026-08-12 passed: root `pnpm check`,
 frontend production build, Ruff, mypy, and the backend suite (`43 passed`). An
 isolated local startup smoke served the Vite app and an authorized `/api/v1`
-request. Full browser interaction acceptance remains unrecorded.
+request. Owner-confirmed manual browser acceptance is complete.
 
 The Foundation gate was independently verified on 2026-08-11 through the
 offline repository check and a manual repository audit. No backend, provider,
@@ -27,8 +27,8 @@ verification.
 | 1 — Foundation | DONE | Structure, documentation, security baseline, model metadata, and `pnpm check` verified |
 | 2 — Backend Core | DONE | FastAPI lifecycle API, SQLite/Alembic, LangGraph, cancellation, recovery, tests, and `pnpm check` verified |
 | 3 — Model Router & Providers | DONE | Router, three adapters, LLM graph, metadata, provider API, remote-interface foundation, tests, and live Ollama verified |
-| 4 — Visual Interface | IN REVIEW | Browser UI, versioned API client, visual graph persistence, live events, and automated checks implemented; manual browser acceptance remains required |
-| 5 — Memory | PLANNED | Requires stable runtime/UI contracts |
+| 4 — Visual Interface | DONE | Browser UI, versioned API client, visual graph persistence, live events, manual browser acceptance, and automated checks verified |
+| 5 — Multimodal Vision Layer | DONE | Local multimodal contracts, persisted assets/analyses, secure folder boundary, Vision UI, automated checks, and owner-confirmed manual acceptance complete |
 | 6 — Lexi Integration | PLANNED | Requires preceding relevant gates |
 
 ## Verified repository facts before this documentation pack
@@ -42,8 +42,8 @@ At documentation preparation time, the public repository already contained:
 
 ## Next action
 
-Phase 4 has been implemented. Before moving it to `DONE`, execute and record the
-manual browser acceptance in `docs/PHASE_4_MANUAL_ACCEPTANCE.md`.
+Phase 6 may begin only after explicit owner instruction and Phase 6 repository
+inspection. Phase 5 acceptance is complete.
 
 ```text
 /phase-4

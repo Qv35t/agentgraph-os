@@ -25,3 +25,11 @@
 
 Do not place the example policy in committed environment files. It is a
 non-secret, local development-only authorization configuration.
+
+## Completion
+
+Owner-confirmed manual browser acceptance completed on 2026-08-12.
+
+The interface also provides an English/Russian language switch and a `/help`
+operator guide. The language preference is browser-local and does not alter
+backend state or authorization.

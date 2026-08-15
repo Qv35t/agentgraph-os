@@ -26,6 +26,8 @@ flowchart LR
   in-memory view at the app level.
 - `src/pages.tsx` provides the dashboard, projects, agents, graph editor, run
   workspace, approvals, providers, events, and settings views.
+- `src/i18n.tsx` provides an English/Russian client-only preference, while
+  `/help` documents the workflow and safety boundary for every navigation area.
 
 ## Routing and deployment
 

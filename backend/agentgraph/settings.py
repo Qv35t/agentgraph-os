@@ -22,3 +22,12 @@ class Settings(BaseSettings):
     remote_control_enabled: bool = False
     remote_control_policies: str = "{}"
     legacy_api_enabled: bool = False
+    vision_enabled: bool = False
+    vision_provider: str = "ollama"
+    vision_model: str = "hf.co/LiquidAI/LFM2.5-VL-3B-GGUF:Q4_K_M"
+    vision_allowed_roots: str = "[]"
+    vision_storage_root: str = "./data/vision"
+    vision_max_file_size_bytes: int = Field(default=10_000_000, gt=0, le=100_000_000)
+    vision_max_image_pixels: int = Field(default=40_000_000, gt=0, le=100_000_000)
+    vision_max_queue: int = Field(default=10, gt=0, le=100)
+    vision_max_scan_files: int = Field(default=1_000, gt=0, le=10_000)

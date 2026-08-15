@@ -12,6 +12,7 @@ class ModelErrorCode(StrEnum):
     RATE_LIMITED = "rate_limited"
     INVALID_RESPONSE = "invalid_response"
     CONFIGURATION_ERROR = "configuration_error"
+    VISION_CAPABILITY_MISSING = "vision_capability_missing"
 
 
 class ModelRouterError(Exception):
@@ -43,6 +44,13 @@ class ModelRef:
 class ModelMessage:
     role: str
     content: str
+    images: tuple["ImagePart", ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ImagePart:
+    data: bytes
+    mime_type: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +70,13 @@ class ModelRequest:
 class ProviderCapability:
     chat: bool = True
     discovery: bool = True
+    vision: bool = False
+    image_captioning: bool = False
+    ocr: bool = False
+    grounding: bool = False
+    ui_understanding: bool = False
+    multi_image: bool = False
+    function_calling: bool = False
 
 
 @dataclass(frozen=True, slots=True)

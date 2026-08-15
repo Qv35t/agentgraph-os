@@ -7,6 +7,7 @@ from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from agentgraph.domain.entities import AgentStatus, RunStatus
+from agentgraph.domain.vision import VisionAnalysisStatus, VisionMode
 
 
 def utc_now() -> datetime:
@@ -64,3 +65,52 @@ class AgentRunRecord(Base):
     output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class VisionAssetRecord(Base):
+    __tablename__ = "vision_assets"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    source_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    storage_locator: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
+class VisionAnalysisRecord(Base):
+    __tablename__ = "vision_analyses"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    asset_id: Mapped[str] = mapped_column(
+        ForeignKey("vision_assets.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    provider_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    model_id: Mapped[str] = mapped_column(String(500), nullable=False)
+    mode: Mapped[VisionMode] = mapped_column(
+        SQLAlchemyEnum(VisionMode, native_enum=False, values_callable=enum_values), nullable=False
+    )
+    prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[VisionAnalysisStatus] = mapped_column(
+        SQLAlchemyEnum(VisionAnalysisStatus, native_enum=False, values_callable=enum_values), nullable=False
+    )
+    raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ocr_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    structured_result: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+    latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class VisionFolderRecord(Base):
+    __tablename__ = "vision_folders"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    root: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    enabled: Mapped[bool] = mapped_column(nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)

@@ -343,4 +343,4 @@ def test_provider_visibility_keeps_backend_health_independent(client: TestClient
     assert set(providers) == {"ollama", "opencode", "openrouter"}
     assert providers["opencode"]["enabled"] is False
     assert providers["openrouter"]["enabled"] is False
-    assert providers["opencode"]["capabilities"] == {"chat": False, "discovery": False}
+    assert not any(providers["opencode"]["capabilities"].values())
