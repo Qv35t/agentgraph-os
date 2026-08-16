@@ -63,6 +63,7 @@ When a referenced file is relevant, use the Read tool to load it. Do **not** pre
 - Phase 4 → `@docs/phases/PHASE_04_VISUAL_INTERFACE.md`
 - Phase 5 → `@docs/phases/PHASE_05_MEMORY.md`
 - Phase 6 → `@docs/phases/PHASE_06_LEXI_INTEGRATION.md`
+- Phase 7 → `@docs/phases/PHASE_07_MULTI_AGENT_ORCHESTRATION.md`
 
 Prefer the matching `/phase-N` OpenCode command because it injects the correct phase context automatically.
 

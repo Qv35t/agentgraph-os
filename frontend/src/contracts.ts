@@ -18,11 +18,13 @@ export const graphNodeSchema = z.object({
   type: z.string(),
   label: z.string(),
   position: z.tuple([z.number(), z.number()]),
+  agent_id: z.string().optional(),
+  instructions: z.string().max(4000).optional(),
 });
 export const graphEdgeSchema = z.object({ id: z.string(), source: z.string(), target: z.string() });
 export const graphSchema = z.object({
-  version: z.literal(1).optional(),
-  runtime: z.enum(["model-v1", "lexi-v1"]).optional(),
+  version: z.union([z.literal(1), z.literal(2)]).optional(),
+  runtime: z.enum(["model-v1", "lexi-v1", "team-v1"]).optional(),
   nodes: z.array(graphNodeSchema),
   edges: z.array(graphEdgeSchema),
 });
@@ -59,6 +61,14 @@ export const runSchema = z.object({
   latency_ms: z.number().nullable(),
 });
 export type Run = z.infer<typeof runSchema>;
+
+export const runTreeNodeSchema: z.ZodType<RunTreeNode> = z.lazy(() => z.object({
+  node_id: z.string().nullable(),
+  depth: z.number(),
+  run: runSchema,
+  children: z.array(runTreeNodeSchema),
+}));
+export type RunTreeNode = { node_id: string | null; depth: number; run: Run; children: RunTreeNode[] };
 
 export const providerSchema = z.object({
   provider_id: z.string(),

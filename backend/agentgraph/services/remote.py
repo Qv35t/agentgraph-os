@@ -58,6 +58,7 @@ class RemoteCommandService:
             RuntimeCommandType.STOP_RUN: Permission.CONTROL,
             RuntimeCommandType.GET_AGENT: Permission.READ,
             RuntimeCommandType.GET_RUN: Permission.READ,
+            RuntimeCommandType.GET_RUN_TREE: Permission.READ,
             RuntimeCommandType.LIST_RUNS: Permission.READ,
             RuntimeCommandType.LIST_PROVIDERS: Permission.READ,
             RuntimeCommandType.LIST_AGENTS: Permission.READ,
@@ -84,6 +85,8 @@ class RemoteCommandService:
             return await self._manager.get_agent(UUID(_required(command.target_id)))
         if command.type is RuntimeCommandType.GET_RUN:
             return await self._manager.get_run(UUID(_required(command.target_id)))
+        if command.type is RuntimeCommandType.GET_RUN_TREE:
+            return await self._manager.get_run_tree(UUID(_required(command.target_id)))
         if command.type is RuntimeCommandType.LIST_RUNS:
             return await self._manager.list_runs(UUID(_required(command.target_id)))
         if command.type is RuntimeCommandType.LIST_AGENTS:

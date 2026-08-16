@@ -1,11 +1,12 @@
 # AgentGraph OS — Project Status
 
-Last updated: **2026-08-15**
+Last updated: **2026-08-16**
 
 ## Current phase
 
-**Phase 6 - Lexi Integration is complete. Automated verification, the local
-model smoke, and owner manual acceptance have passed.**
+**Phase 7 - Multi-Agent Graph Orchestration and Delegation is complete.**
+Automated verification, real local Ollama team smokes, and owner manual browser
+acceptance passed. Phase 6 completed the original MVP.
 
 The Remote Interface Foundation is implemented as a Phase 3 compatibility
 extension: normalized events/commands, versioned REST and WebSocket transport,
@@ -30,6 +31,7 @@ verification.
 | 4 — Visual Interface | DONE | Browser UI, versioned API client, visual graph persistence, live events, manual browser acceptance, and automated checks verified |
 | 5 — Multimodal Vision Layer | DONE | Local multimodal contracts, persisted assets/analyses, secure folder boundary, Vision UI, automated checks, and owner-confirmed manual acceptance complete |
 | 6 — Lexi Integration | DONE | Lexi workflow, scoped memory, controlled tools, `/lexi` UI, automated checks, live Ollama smoke, and owner manual acceptance complete |
+| 7 — Multi-Agent Orchestration | DONE | Validated team DAGs, persistent child runs, hierarchy API/UI, automated verification, local Ollama smokes, and owner manual acceptance complete |
 
 ## Verified repository facts before this documentation pack
 
@@ -42,11 +44,7 @@ At documentation preparation time, the public repository already contained:
 
 ## Next action
 
-The current numbered MVP phases are complete. Future work belongs to post-MVP tracks.
-
-```text
-/phase-4
-```
+The numbered Phase 7 post-MVP orchestration track is complete.
 
 Before writing code, OpenCode must inspect the actual repository tree and dependency manifests. The phase file contains architecture targets, not permission to duplicate already-correct modules.
 

@@ -2,9 +2,9 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from agentgraph.domain.entities import Agent, AgentRun, AgentStatus, RunStatus
+from agentgraph.domain.entities import Agent, AgentRun, AgentStatus, RunStatus, RunTreeNode
 from agentgraph.domain.memory import MemoryKind, MemoryMatch, MemoryRecord
 from agentgraph.domain.vision import VisionAnalysisStatus, VisionMode
 from agentgraph.models.contracts import (
@@ -23,10 +23,20 @@ class GraphDefinition(BaseModel):
     """Persisted visual graph semantics; runtime behavior remains intentionally fixed."""
 
     model_config = ConfigDict(extra="forbid")
-    version: int | None = Field(default=None, ge=1, le=1)
-    runtime: Literal["model-v1", "lexi-v1"] | None = None
+    version: int | None = Field(default=None, ge=1, le=2)
+    runtime: Literal["model-v1", "lexi-v1", "team-v1"] | None = None
     nodes: list["GraphNode"] = Field(default_factory=list, max_length=100)
     edges: list["GraphEdge"] = Field(default_factory=list, max_length=200)
+
+    @model_validator(mode="after")
+    def validate_team_shape(self) -> "GraphDefinition":
+        if self.runtime == "team-v1" and self.version != 2:
+            raise ValueError("team-v1 requires graph version 2")
+        if self.version == 2 and self.runtime != "team-v1":
+            raise ValueError("graph version 2 requires team-v1")
+        if self.runtime == "team-v1" and any(node.type != "agent-ref" or node.agent_id is None for node in self.nodes):
+            raise ValueError("team-v1 requires agent-ref nodes")
+        return self
 
 
 class GraphNode(BaseModel):
@@ -36,6 +46,8 @@ class GraphNode(BaseModel):
     type: str = Field(default="agent", min_length=1, max_length=50)
     label: str = Field(min_length=1, max_length=200)
     position: tuple[float, float]
+    agent_id: UUID | None = None
+    instructions: str | None = Field(default=None, max_length=4_000)
 
 
 class GraphEdge(BaseModel):
@@ -142,6 +154,22 @@ class RunResponse(BaseModel):
             output_tokens=run.output_tokens,
             total_tokens=run.total_tokens,
             latency_ms=run.latency_ms,
+        )
+
+
+class RunTreeNodeResponse(BaseModel):
+    node_id: str | None
+    depth: int
+    run: RunResponse
+    children: list["RunTreeNodeResponse"]
+
+    @classmethod
+    def from_domain(cls, node: RunTreeNode) -> "RunTreeNodeResponse":
+        return cls(
+            node_id=node.node_id,
+            depth=node.depth,
+            run=RunResponse.from_domain(node.run),
+            children=[cls.from_domain(child) for child in node.children],
         )
 
 

@@ -43,3 +43,8 @@ class Settings(BaseSettings):
     tool_max_output_chars: int = Field(default=4_000, gt=0, le=20_000)
     tool_application_allowlist_json: str = "{}"
     lexi_max_tool_steps: int = Field(default=3, gt=0, le=10)
+    orchestration_max_workers: int = Field(default=4, gt=0, le=20)
+    orchestration_max_parallel: int = Field(default=2, gt=0, le=20)
+    orchestration_max_depth: int = Field(default=2, ge=0, le=10)
+    orchestration_child_timeout_seconds: float = Field(default=120, gt=0, le=3600)
+    orchestration_max_context_chars: int = Field(default=24_000, gt=0, le=100_000)

@@ -31,4 +31,11 @@ describe("remote API client", () => {
 
     await expect(api.deleteMemory("memory-1", "agent-1")).resolves.toBeUndefined();
   });
+
+  it("parses a persisted run hierarchy", async () => {
+    const run = { id: "run-1", agent_id: "agent-1", status: "succeeded", input_text: "task", output_text: "result", error: null, created_at: "2026-08-16T00:00:00Z", started_at: null, finished_at: null, provider_id: null, model_id: null, finish_reason: null, input_tokens: null, output_tokens: null, total_tokens: null, latency_ms: null };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ node_id: null, depth: 0, run, children: [{ node_id: "research", depth: 1, run: { ...run, id: "run-2" }, children: [] }] }), { status: 200 })));
+
+    await expect(api.runTree("run-1")).resolves.toMatchObject({ children: [{ node_id: "research" }] });
+  });
 });

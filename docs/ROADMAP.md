@@ -139,11 +139,19 @@ Deliver direction:
 - frontend representation of the Lexi workflow;
 - end-to-end local-first acceptance flow.
 
-## Post-MVP tracks — not numbered commitments
+## Phase 7 — Multi-Agent Graph Orchestration and Delegation
+
+**Status:** DONE. Automated verification, real local Ollama team smokes, and
+owner manual browser acceptance are complete.
+
+Phase 7 is the first numbered post-MVP phase. It adds validated static team
+DAGs, normal persisted child runs, bounded scheduling/delegation, run-tree
+inspection, and browser composition/inspection without autonomous planning.
+
+## Remaining post-MVP tracks
 
 Only after Phase 6 review:
 
-- richer multi-agent orchestration;
 - MCP/tool registry and plugin runtime;
 - workflow templates/marketplace concepts;
 - scheduling/background jobs;

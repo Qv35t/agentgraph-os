@@ -51,3 +51,14 @@ bounded output, audit metadata, and per-tool security review. The current
 registry is disabled by default and contains `system.current_time` plus the
 approval-gated, allowlisted `desktop.open_application`; shell access does not
 exist.
+
+## Multi-agent orchestration
+
+Team graphs are declarative, versioned data. They allow only validated
+existing-agent references and bounded instructions/edges; executable fields,
+credentials, and model-selected agent IDs are rejected. Child output is
+untrusted text and cannot grant tool approval, change authorization, alter
+runtime configuration, or trigger command execution. Server-owned worker,
+parallelism, depth, timeout, and context limits prevent unbounded delegation.
+Every child uses its own persisted agent model route, memory scope, and tool
+policy; a parent never inherits authority to bypass those boundaries.

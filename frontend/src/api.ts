@@ -8,6 +8,7 @@ import {
   projectSchema,
   providerSchema,
   runSchema,
+  runTreeNodeSchema,
   systemSchema,
   type Agent,
   type Approval,
@@ -19,6 +20,7 @@ import {
   type Project,
   type Provider,
   type Run,
+  type RunTreeNode,
   type RuntimeEvent,
   type SystemInfo,
   visionAnalysisSchema,
@@ -79,6 +81,7 @@ export const api = {
     request<Agent>(`/agents/${id}/graph`, agentSchema, { method: "PATCH", body: JSON.stringify({ graph_definition: graphDefinition }) }),
   agentRuns: (agentId: string) => request<Run[]>(`/agents/${agentId}/runs`, z.array(runSchema)),
   run: (id: string) => request<Run>(`/runs/${id}`, runSchema),
+  runTree: (id: string) => request<RunTreeNode>(`/runs/${id}/tree`, runTreeNodeSchema),
   startRun: (agentId: string, inputText: string) =>
     request<Run>(`/agents/${agentId}/runs`, runSchema, { method: "POST", body: JSON.stringify({ input_text: inputText }) }),
   stopRun: (id: string) => request<Run>(`/runs/${id}/stop`, runSchema, { method: "POST" }),

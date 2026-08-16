@@ -37,3 +37,10 @@ class RunRepository:
     async def list_stale(self, session: AsyncSession) -> list[AgentRunRecord]:
         result = await session.scalars(select(AgentRunRecord).where(AgentRunRecord.status.in_(ACTIVE_RUN_STATUSES)))
         return list(result)
+
+    async def list_by_ids(self, session: AsyncSession, run_ids: list[UUID]) -> list[AgentRunRecord]:
+        if not run_ids:
+            return []
+        statement = select(AgentRunRecord).where(AgentRunRecord.id.in_([str(run_id) for run_id in run_ids]))
+        result = await session.scalars(statement)
+        return list(result)

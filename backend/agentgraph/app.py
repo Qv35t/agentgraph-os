@@ -22,6 +22,7 @@ from agentgraph.runtime.graph import ModelGraphRuntime
 from agentgraph.runtime.lexi import LexiGraphRuntime
 from agentgraph.runtime.registry import RunRegistry
 from agentgraph.runtime.selector import WorkflowRuntime
+from agentgraph.runtime.team import TeamGraphRuntime
 from agentgraph.services.lexi import LexiTemplateService
 from agentgraph.services.manager import AgentManager, AgentRuntime
 from agentgraph.services.memory import MemoryService
@@ -93,7 +94,10 @@ def create_app(
                 runtime_settings.cancellation_timeout_seconds,
                 event_bus,
                 runtime_settings.project_id,
+                runtime_settings,
             )
+            if isinstance(selected_runtime, WorkflowRuntime):
+                selected_runtime.bind_team(TeamGraphRuntime(model_router, manager, runtime_settings))
             await manager.recover_stale_runs()
             app.state.agent_manager = manager
             app.state.model_router = model_router

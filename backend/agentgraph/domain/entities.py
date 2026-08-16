@@ -52,3 +52,11 @@ class AgentRun:
     output_tokens: int | None = None
     total_tokens: int | None = None
     latency_ms: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RunTreeNode:
+    node_id: str | None
+    depth: int
+    run: AgentRun
+    children: tuple["RunTreeNode", ...]

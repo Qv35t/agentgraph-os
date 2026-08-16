@@ -13,13 +13,14 @@ from agentgraph.api.schemas import (
     HealthResponse,
     ProviderStatusResponse,
     RunResponse,
+    RunTreeNodeResponse,
     UpdateAgentGraphRequest,
 )
-from agentgraph.domain.entities import Agent, AgentRun
+from agentgraph.domain.entities import Agent, AgentRun, RunTreeNode
 from agentgraph.domain.remote import ApprovalRequest, Permission, Principal, RuntimeCommand, RuntimeCommandType
 from agentgraph.models.contracts import ProviderStatus
 from agentgraph.runtime.events import RuntimeEventBus, event_json
-from agentgraph.services.errors import AgentNotFoundError, LifecycleConflictError, RunNotFoundError
+from agentgraph.services.errors import AgentNotFoundError, LifecycleConflictError, OrchestrationError, RunNotFoundError
 from agentgraph.services.remote import ApprovalService, AuthorizationError, AuthorizationService, RemoteCommandService
 
 remote_router = APIRouter()
@@ -120,19 +121,22 @@ async def create_agent(
     request: Request, payload: CreateAgentRequest, x_agentgraph_identity: str | None = Header(default=None)
 ) -> AgentResponse:
     principal = _principal(request, x_agentgraph_identity, Permission.EXECUTE)
-    agent = cast(
-        Agent,
-        await _commands(request).dispatch(
-            _command(
-                RuntimeCommandType.CREATE_AGENT,
-                principal,
-                name=payload.name,
-                description=payload.description,
-                model_ref=payload.model_ref,
-                graph_definition=payload.graph_definition.model_dump(exclude_none=True),
-            )
-        ),
-    )
+    try:
+        agent = cast(
+            Agent,
+            await _commands(request).dispatch(
+                _command(
+                    RuntimeCommandType.CREATE_AGENT,
+                    principal,
+                    name=payload.name,
+                    description=payload.description,
+                    model_ref=payload.model_ref,
+                    graph_definition=payload.graph_definition.model_dump(mode="json", exclude_none=True),
+                )
+            ),
+        )
+    except OrchestrationError as error:
+        raise _orchestration_http(error) from error
     return AgentResponse.from_domain(agent)
 
 
@@ -151,6 +155,8 @@ async def get_agent(
             status_code=404,
             detail={"error": {"code": "AGENT_NOT_FOUND", "message": "Agent was not found", "details": {}}},
         ) from error
+    except OrchestrationError as error:
+        raise _orchestration_http(error) from error
     return AgentResponse.from_domain(agent)
 
 
@@ -170,7 +176,7 @@ async def update_agent_graph(
                     RuntimeCommandType.UPDATE_AGENT_GRAPH,
                     principal,
                     agent_id,
-                    graph_definition=payload.graph_definition.model_dump(exclude_none=True),
+                    graph_definition=payload.graph_definition.model_dump(mode="json", exclude_none=True),
                 )
             ),
         )
@@ -179,6 +185,8 @@ async def update_agent_graph(
             status_code=404,
             detail={"error": {"code": "AGENT_NOT_FOUND", "message": "Agent was not found", "details": {}}},
         ) from error
+    except OrchestrationError as error:
+        raise _orchestration_http(error) from error
     return AgentResponse.from_domain(agent)
 
 
@@ -238,7 +246,26 @@ async def start_run(
         raise HTTPException(
             status_code=409, detail={"error": {"code": "RUN_CONFLICT", "message": str(error), "details": {}}}
         ) from error
+    except OrchestrationError as error:
+        raise _orchestration_http(error) from error
     return RunResponse.from_domain(run)
+
+
+@remote_router.get("/api/v1/runs/{run_id}/tree", response_model=RunTreeNodeResponse)
+async def get_run_tree(
+    request: Request, run_id: str, x_agentgraph_identity: str | None = Header(default=None)
+) -> RunTreeNodeResponse:
+    principal = _principal(request, x_agentgraph_identity, Permission.READ)
+    try:
+        tree = cast(
+            RunTreeNode,
+            await _commands(request).dispatch(_command(RuntimeCommandType.GET_RUN_TREE, principal, run_id)),
+        )
+    except (RunNotFoundError, ValueError) as error:
+        raise HTTPException(
+            status_code=404, detail={"error": {"code": "RUN_NOT_FOUND", "message": "Run was not found", "details": {}}}
+        ) from error
+    return RunTreeNodeResponse.from_domain(tree)
 
 
 @remote_router.post("/api/v1/runs/{run_id}/stop", response_model=RunResponse)
@@ -368,6 +395,13 @@ def _approval_json(approval: ApprovalRequest) -> dict[str, object]:
         "status": approval.status,
         "created_at": approval.created_at.isoformat(),
     }
+
+
+def _orchestration_http(error: OrchestrationError) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        detail={"error": {"code": error.code, "message": str(error), "details": {}}},
+    )
 
 
 def _socket_identity(websocket: WebSocket) -> tuple[str | None, str | None]:

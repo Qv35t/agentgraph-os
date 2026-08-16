@@ -8,6 +8,7 @@ Accepted initial records:
 - `ADR-0002-local-first.md`
 - `ADR-0003-provider-agnostic-model-router.md`
 - `ADR-0004-opencode-auth-boundary.md`
+- `ADR-0005-multi-agent-dag-orchestration.md`
 
 New ADR format:
 

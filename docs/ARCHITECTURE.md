@@ -170,6 +170,14 @@ argument vector, requires approval, and never invokes a shell.
 
 Model text does not execute tools implicitly. Tool invocation requires typed definitions, allowlists/policy, explicit runtime handling, observable input/output, cancellation, timeouts, and security review.
 
+### 3.11 Multi-agent orchestration
+
+Phase 7 adds validated version-2 `team-v1` DAGs. `TeamGraphRuntime` schedules
+bounded agent references through `AgentManager`, which retains durable run and
+cancellation authority. SQLite persists parent-child links in `run_delegations`;
+the authorized v1 run-tree endpoint and UI expose history. See
+`docs/architecture/MULTI_AGENT_ORCHESTRATION.md`.
+
 ## 4. Runtime state vs persistent state
 
 Persistent state records durable agent/run history. Process-local registries track live execution handles such as `asyncio.Task` objects. After restart, persisted `running` state must be recovered to a truthful terminal state rather than assumed to still be active.

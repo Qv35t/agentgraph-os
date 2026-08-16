@@ -43,7 +43,7 @@ async def create_agent(request: Request, payload: CreateAgentRequest) -> AgentRe
         name=payload.name,
         description=payload.description,
         model_ref=payload.model_ref,
-        graph_definition=payload.graph_definition.model_dump(exclude_none=True),
+        graph_definition=payload.graph_definition.model_dump(mode="json", exclude_none=True),
     )
     return AgentResponse.from_domain(agent)
 

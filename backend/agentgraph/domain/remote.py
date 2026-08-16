@@ -68,6 +68,7 @@ class RuntimeCommandType(StrEnum):
     LIST_PROVIDERS = "list_providers"
     LIST_AGENTS = "list_agents"
     LIST_PROJECTS = "list_projects"
+    GET_RUN_TREE = "get_run_tree"
 
 
 class ApprovalStatus(StrEnum):
