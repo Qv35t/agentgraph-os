@@ -13,6 +13,9 @@ This file is the small, always-loaded control plane for OpenCode. Detailed rules
 6. **Preserve working code.** Extend existing reasonable modules instead of creating competing parallel implementations.
 7. **No fake completion.** Do not claim a test, migration, smoke test, provider call, or acceptance criterion passed unless it was actually run and observed.
 8. **Keep scope phase-bound.** Do not implement future-phase features merely because they are adjacent or convenient.
+9. **Authorization before autonomy.** Planning, recommendation, model output,
+   inferred project state, or a prior grant outside its scope never authorizes a
+   new user-impacting action.
 
 ## 2. Current source of truth
 
@@ -30,6 +33,12 @@ Instruction precedence for implementation decisions:
 
 If two sources conflict, do not silently choose. Preserve existing working behavior where safe, report the conflict, and update documentation when the decision becomes clear.
 
+`PROJECT_STATUS.md` and the **Current State** sections of architecture records
+describe what exists. `FUTURE_VISION.md`, target architecture sections, the
+future roadmap, and target ADRs describe approved intent only. Never implement
+or report a target capability as current behavior without an approved phase and
+observed verification.
+
 ## 3. Lazy context loading — CRITICAL
 
 OpenCode does not need every project document in every task.
@@ -46,14 +55,17 @@ When a referenced file is relevant, use the Read tool to load it. Do **not** pre
 | Work area | Read these files |
 |---|---|
 | Backend/API/runtime/persistence | `@docs/agent-rules/BACKEND.md`, `@docs/TESTING.md` |
-| Remote API/WebSocket/interfaces | `@docs/agent-rules/REMOTE_INTERFACES.md`, `@docs/architecture/REMOTE_INTERFACES.md`, `@docs/SECURITY.md` |
+| Remote API/WebSocket/interfaces | `@docs/agent-rules/REMOTE_INTERFACES.md`, `@docs/architecture/REMOTE_INTERFACES.md`, `@docs/architecture/SECURITY_AND_TRUST.md`, `@docs/SECURITY.md` |
 | Model router/providers/LLM | `@docs/agent-rules/MODELS.md`, `@docs/MODEL_ROUTER.md`, `@docs/SECURITY.md` |
 | Vision/multimodal/assets/folders | `@docs/agent-rules/VISION.md`, `@docs/architecture/VISION.md`, `@docs/SECURITY.md`, `@docs/TESTING.md` |
 | Frontend/React Flow/UI | `@docs/agent-rules/FRONTEND.md` |
 | Frontend/browser/visual interface | `@docs/agent-rules/VISUAL_INTERFACE.md`, `@docs/architecture/VISUAL_INTERFACE.md`, `@docs/agent-rules/REMOTE_INTERFACES.md` |
 | Memory/RAG/vector storage | `@docs/agent-rules/MEMORY.md`, `@docs/MEMORY.md`, `@docs/SECURITY.md` |
-| Tools/Linux automation/Lexi integration | `@docs/agent-rules/TOOLS_AND_AUTOMATION.md`, `@docs/TOOLS.md`, `@docs/SECURITY.md` |
-| Architecture changes | `@docs/ARCHITECTURE.md`, `@docs/decisions/README.md` |
+| Tools/Linux automation/Lexi integration | `@docs/agent-rules/TOOLS_AND_AUTOMATION.md`, `@docs/TOOLS.md`, `@docs/architecture/LEXI.md`, `@docs/SECURITY.md` |
+| Distributed Core/recovery/storage | `@docs/architecture/DISTRIBUTED_RUNTIME.md`, `@docs/architecture/RESILIENCE_AND_RECOVERY.md`, `@docs/architecture/STORAGE_SEARCH_BACKUP.md`, `@docs/architecture/SECURITY_AND_TRUST.md` |
+| OpenCode Coder Agent | `@docs/architecture/OPENCODE_INTEGRATION.md`, `@docs/agent-rules/TOOLS_AND_AUTOMATION.md`, `@docs/SECURITY.md` |
+| Voice/proactive interaction | `@docs/architecture/VOICE_INTERACTION.md`, `@docs/architecture/LEXI.md`, `@docs/architecture/REMOTE_INTERFACES.md` |
+| Architecture changes | `@docs/FUTURE_VISION.md`, `@docs/ARCHITECTURE.md`, `@docs/GLOSSARY.md`, `@docs/RISK_REGISTER.md`, `@docs/decisions/README.md` |
 | Repo conventions / developer workflow | `@docs/DEVELOPMENT.md`, `@docs/REPOSITORY_STRUCTURE.md` |
 
 ### Load by active phase
@@ -64,6 +76,7 @@ When a referenced file is relevant, use the Read tool to load it. Do **not** pre
 - Phase 5 → `@docs/phases/PHASE_05_MEMORY.md`
 - Phase 6 → `@docs/phases/PHASE_06_LEXI_INTEGRATION.md`
 - Phase 7 → `@docs/phases/PHASE_07_MULTI_AGENT_ORCHESTRATION.md`
+- Phase 8 → `@docs/phases/PHASE_08_FUTURE_ARCHITECTURE_BASELINE.md`
 
 Prefer the matching `/phase-N` OpenCode command because it injects the correct phase context automatically.
 
@@ -85,7 +98,7 @@ For any task larger than a trivial typo:
 Canonical top-level areas established by the Foundation phase:
 
 - `backend/` — FastAPI, runtime, persistence, providers, backend tests.
-- `frontend/` — React + React Flow visual workspace (implemented in a later phase).
+- `frontend/` — React + React Flow visual workspace.
 - `agents/` — project-level agent definitions/templates if not better located inside backend domain code.
 - `tools/` — controlled tool definitions/adapters; no arbitrary shell by default.
 - `memory/` — memory-related configuration or service integration where appropriate.
@@ -109,7 +122,7 @@ Foundation-level direction:
 - Local AI: Ollama.
 - Subscription/provider bridge: local OpenCode Server where explicitly designed.
 - OpenAI-compatible cloud path: optional, explicit, never required for local startup.
-- Memory direction: Qdrant / Mem0 behind project-owned abstractions in the memory phase.
+- Memory direction: future Qdrant / Mem0 adapters remain behind project-owned abstractions.
 
 Do not pin new major frameworks or replace this stack without an ADR.
 
@@ -131,7 +144,9 @@ Keep these synchronized with real behavior:
 
 - `docs/PROJECT_STATUS.md` — what is done / active / blocked.
 - `docs/ROADMAP.md` — phase-level plan, not a daily task log.
-- `docs/ARCHITECTURE.md` — stable current architecture and boundaries.
+- `docs/FUTURE_VISION.md` — stable approved product north star, not current behavior.
+- `docs/ARCHITECTURE.md` — current architecture plus the linked target map.
+- `docs/GLOSSARY.md` and `docs/RISK_REGISTER.md` — target terminology and major risks.
 - `docs/decisions/` — decisions that would otherwise be repeatedly reconsidered.
 - active phase file — acceptance gate and scope.
 

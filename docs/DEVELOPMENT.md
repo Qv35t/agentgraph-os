@@ -17,17 +17,17 @@ git branch --show-current
 
 Then inspect the relevant manifests and README files. Do not assume commands that are not actually configured.
 
-## Foundation check
+## Repository quality gate
 
-Run this command from the repository root to verify Foundation artifacts:
+Run this command from the repository root to verify the committed frontend and
+backend quality gate:
 
 ```bash
 pnpm check
 ```
 
-It is offline and validates repository structure, required documentation,
-non-secret configuration, and the known local model metadata. It does not run
-Ollama, OpenCode, provider, backend, or frontend checks.
+It runs frontend checks plus backend Ruff, mypy, and isolated tests. It does not
+call Ollama, OpenCode, or cloud providers.
 
 ## Python backend baseline
 

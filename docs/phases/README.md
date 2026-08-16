@@ -3,7 +3,8 @@
 Each file is a task-scoped contract for one roadmap phase, including the
 Foundation contract in `PHASE_01_FOUNDATION.md`.
 
-The active post-MVP Phase 7 gate is `PHASE_07_MULTI_AGENT_ORCHESTRATION.md`.
+The active post-MVP documentation gate is
+`PHASE_08_FUTURE_ARCHITECTURE_BASELINE.md`. Phase 7 remains complete.
 
 Do not load all phase files into a single OpenCode task. Use the corresponding `.opencode/commands/phase-N.md` command.
 

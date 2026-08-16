@@ -1,4 +1,4 @@
-# Remote Interface Foundation
+# Remote Interfaces: Current Foundation and Target Access
 
 ## Implemented boundary
 
@@ -65,3 +65,26 @@ explicit persisted runtime-waiting design.
 No Web UI, TUI, PWA, Telegram, Discord, WhatsApp, Slack, messaging SDK, remote
 credential issuer, durable approval store, or runtime pause/resume/retry control
 is implemented by this foundation.
+
+## Approved Target: Remote Access
+
+The future access surfaces are responsive web, installable PWA, Web Push,
+Telegram fallback/control, voice, and desktop browser. A native Android client
+is not a required product path. All remain clients of shared server contracts;
+connection state never determines Run lifetime.
+
+Low-bandwidth mode prioritizes text chat, voice commands, status, approvals, and
+compact notifications. Heavy visual streams are optional. Notification severities
+are `INFO`, `SUCCESS`, `WARNING`, `ACTION_REQUIRED`, and `CRITICAL`; users may
+later route severity to supported channels.
+
+Remote View is a planned, separately authorized read-oriented view of registered
+devices, applications, terminal, or files. It does not imply desktop automation
+or privileged control. Future structured UI context may identify the selected
+project/device/entity so Lexi does not have to infer it from a screenshot.
+
+Worldwide access requires the planned identity, trusted-device, grant,
+revocation, audit, and lockdown controls in
+[`SECURITY_AND_TRUST.md`](SECURITY_AND_TRUST.md). See also
+[`VOICE_INTERACTION.md`](VOICE_INTERACTION.md) and
+[`VISUAL_INTERFACE.md`](VISUAL_INTERFACE.md).

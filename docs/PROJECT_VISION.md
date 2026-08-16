@@ -1,4 +1,8 @@
-# AgentGraph OS — Project Vision
+# AgentGraph OS — Original MVP Vision
+
+Status: historical MVP framing. The approved Post-Phase-7 target north star is
+[`FUTURE_VISION.md`](FUTURE_VISION.md); current implementation facts are in
+[`PROJECT_STATUS.md`](PROJECT_STATUS.md).
 
 ## Purpose
 
@@ -12,7 +16,7 @@ The project should make it practical to combine:
 - visual graphs;
 - persistent state and memory;
 - controlled tools and Linux automation;
-- future integration with Lexi.
+- Lexi as a completed Phase 6 workflow, with broader orchestration planned.
 
 ## Product principles
 

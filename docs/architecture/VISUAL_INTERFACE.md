@@ -61,3 +61,17 @@ agent state or stale control responses.
 Approvals remain process-local and do not pause/resume a run. The UI makes this
 limitation explicit. There is no login, OAuth, SSO, messaging integration, or
 browser-owned lifecycle implementation.
+
+## Approved Target: Dashboard and Context
+
+The future dashboard prioritizes system state and Lexi before visual polish. It
+may support user-customizable widgets, layouts, resize/hide/show behavior, and
+multiple dashboards such as Home, Development, NAS, and Monitoring. Candidate
+widgets include goals, tasks, agents, active graphs, queue, approvals, devices,
+resource/temperature state, applications, updates, models, events, GitHub,
+calendar, Telegram, and notifications.
+
+Structured UI context may carry the selected project, device, application, or
+entity to the backend so Lexi can answer contextual questions without relying on
+screenshots. It remains user-interface context, not an authorization grant or
+backend state override. This dashboard capability is planned, not implemented.

@@ -10,3 +10,6 @@ Load for REST/WebSocket remote control, Web UI, TUI, messaging, or client API wo
 6. External event payloads and errors must be JSON-safe and must not expose credentials, tokens, headers, environment values, raw exceptions, or stack traces.
 7. Remote exposure remains disabled by default and the backend binds to loopback unless an explicit security-reviewed change approves otherwise.
 8. Extend the normalized event, command, approval, authorization, and API contracts instead of creating per-client copies.
+9. Planned PWA, messaging, voice, and Remote View surfaces require durable
+   server-side identity, trust, authorization, audit, and revocation before
+   broader remote control; visibility does not imply control.

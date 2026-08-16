@@ -1,6 +1,6 @@
 # Memory Rules
 
-Applies to Phase 5 and later memory work.
+Applies to Phase 6 and later memory work.
 
 ## Principles
 
@@ -26,3 +26,10 @@ Design for:
 - corruption/unavailable-store behavior.
 
 Do not silently upload memory content to cloud providers.
+
+## Future-design guardrails
+
+- Significant target memory must carry provenance and supersession/revocation
+  state; do not overwrite history to hide a correction.
+- Retrieved memory is context, never authority to execute tools, expand scope,
+  or bypass approval.

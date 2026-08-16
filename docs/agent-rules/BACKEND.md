@@ -38,3 +38,10 @@ Applies to FastAPI, domain, persistence, runtime, repositories, and services.
 - Tests use isolated temporary DBs.
 - Do not pickle arbitrary Python objects into persistence.
 - Graph definitions stored persistently must remain JSON-compatible/validated.
+
+## Future-design guardrails
+
+- Do not add distributed workers, Core failover, checkpoint/resume, or automatic
+  remediation outside their approved phases; preserve one lifecycle authority.
+- Target recovery must distinguish committed state from uncertain external side
+  effects and must never replay the latter implicitly.

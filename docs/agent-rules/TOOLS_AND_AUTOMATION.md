@@ -30,3 +30,11 @@ If shell execution is ever introduced, it requires a dedicated ADR and threat mo
 ## Observability
 
 Record enough metadata to understand which tool ran and whether it succeeded, without logging secrets or unnecessarily sensitive payloads.
+
+## Future-design guardrails
+
+- A target approval/grant remains task-, capability-, and time-scoped,
+  revocable, and auditable; it cannot transfer or expand itself.
+- OpenCode coordination is a future specialized-agent boundary. It does not
+  authorize raw credential access, unrestricted shell execution, or unbounded
+  concurrent repository writes.

@@ -62,3 +62,12 @@ runtime configuration, or trigger command execution. Server-owned worker,
 parallelism, depth, timeout, and context limits prevent unbounded delegation.
 Every child uses its own persisted agent model route, memory scope, and tool
 policy; a parent never inherits authority to bypass those boundaries.
+
+## Approved Future Trust Boundary
+
+Passkeys/WebAuthn, trusted devices, durable approvals and scoped grants,
+credential brokering, lockdown, and any non-loopback remote access are planned
+architecture, not current controls. They must preserve server-side authorization,
+least privilege, redaction, revocation, and audit. See
+[`architecture/SECURITY_AND_TRUST.md`](architecture/SECURITY_AND_TRUST.md) and
+the Phase 11 roadmap entry before implementing any of them.

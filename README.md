@@ -1,50 +1,23 @@
 # AgentGraph OS
 
+Local-first visual operating environment for AI agents.
 
-Visual operating system for AI agents.
+## Current Implementation
 
+- React/Vite + React Flow browser workspace over versioned backend contracts.
+- Python, FastAPI, LangGraph, SQLite, SQLAlchemy, and Alembic backend.
+- Provider-neutral routing for local Ollama, an optional local OpenCode model bridge, and an optional OpenAI-compatible provider.
+- Local vision observation, scoped SQLite Memory MVP, controlled typed tools, Lexi workflow, and bounded static multi-agent DAGs.
 
-## Features
+The backend binds to loopback by default. OpenCode bridge mode is model transport only; it does not copy OpenCode credentials or provide a first-class Coder Agent. See [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for verified current behavior and limitations.
 
+## Future Direction
 
-- Multi-agent workflows
-- Local LLM support
-- GPT integration
-- Visual agent graph
-- Memory system
-- Tool execution
-- Linux automation
+Phase 8 has prepared the Post-Phase-7 documentation baseline and is awaiting owner review. NAS Core/failover, durable recovery and approvals, trusted remote access, autonomous Lexi planning, voice, PWA/Telegram, OpenCode orchestration, semantic memory/files, and advanced dashboard are planned target capabilities, not implemented features.
 
+Read [`docs/FUTURE_VISION.md`](docs/FUTURE_VISION.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), and [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
-## Architecture
-
-
-Frontend:
-React + React Flow
-
-
-Backend:
-Python + FastAPI + LangGraph
-
-
-AI:
-Ollama
-OpenAI
-OpenRouter
-
-
-Memory:
-Qdrant
-Mem0
-
-
-## Status
-
-Phase 4 - Visual Interface is implemented with a React/Vite browser client over
-the versioned remote API and event stream. See `docs/PHASE_4_MANUAL_ACCEPTANCE.md`
-for the local browser acceptance procedure.
-
-## Local model direction
+## Local Model Direction
 
 - Default local: `qwen3-4b-nothink:latest`
 - Local quality: `qwen3:4B`
@@ -53,51 +26,40 @@ for the local browser acceptance procedure.
 
 ## Verification
 
-Run the Foundation check from the repository root:
+Run the repository quality gate from the root:
 
 ```bash
 pnpm check
 ```
 
-The check runs Foundation validation, Ruff, mypy, and mocked/isolated backend
-tests. It does not call Ollama, OpenCode, or cloud providers.
+It runs frontend checks plus backend Ruff, mypy, and isolated tests. It does not call Ollama, OpenCode, or cloud providers.
 
 ## Backend Development
 
-Install the locked backend dependencies:
+Install locked backend dependencies:
 
 ```bash
 uv sync --directory backend --all-groups
 ```
 
-Apply the local SQLite migration and start the loopback-only backend:
+Apply the local SQLite migration and start the loopback backend:
 
 ```bash
 uv run --directory backend alembic upgrade head
 uv run --directory backend uvicorn agentgraph.app:app --host 127.0.0.1 --port 8000
 ```
 
-The API includes `GET /health`, provider discovery at `GET /api/providers`,
-agent lifecycle endpoints under `/api/agents`, and run lifecycle endpoints
-under `/api/runs`. Optional provider credentials are configured only through
-local environment variables based on `.env.example`.
+The versioned API includes health, provider discovery, agent/run lifecycle, and other implemented contracts. Optional provider credentials are local environment configuration only.
 
 ## Frontend Development
-
-Install workspace dependencies, then start the browser client:
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Vite proxies `/api` and `/ws` to the loopback backend. Build the production
-assets with `pnpm build`; run the full repository gate with `pnpm check`.
+Vite proxies `/api` and `/ws` to the loopback backend. Build with `pnpm build`; run the repository gate with `pnpm check`.
 
 ## Desktop Launcher
 
-On Linux, run `./launch-agentgraph-os.sh` or open `AgentGraph-OS.desktop` from
-the project root. The launcher applies migrations, starts missing loopback
-backend/frontend processes, writes local logs to `.run/`, and opens the browser.
-It uses the existing local backend configuration; configure remote control or
-Vision in your user-owned environment file before launching when needed.
+On Linux, run `./launch-agentgraph-os.sh` or open `AgentGraph-OS.desktop`. The launcher applies migrations, starts local backend/frontend processes, writes local logs to `.run/`, and opens the browser.

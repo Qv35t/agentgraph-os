@@ -47,3 +47,10 @@ Never invent token usage when a provider did not supply it.
 ## Safety
 
 Provider output is untrusted text and does not execute tools.
+
+## Future-design guardrails
+
+- The planned `Local Only` profile must deny external AI-provider task-data
+  egress at the provider boundary, not merely prefer local routes.
+- Cost, quota, and capability claims must use provider-supplied or explicitly
+  estimated data; never fabricate limits or silently choose a paid route.

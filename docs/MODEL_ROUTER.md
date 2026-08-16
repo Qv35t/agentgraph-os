@@ -61,3 +61,20 @@ Automated provider tests use mocked transport and deterministic responses. Live 
 - OpenAI-compatible credentials remain environment-only and the adapter is
   disabled until its API base URL ending in `/v1` is configured. Credentialed
   non-loopback endpoints require HTTPS.
+
+## Approved Target: Routing Profiles
+
+The target router adds explicit user policies: `Local Only`, `Balanced`, `Best
+Quality`, and `Cheapest`. `Local Only` is an enforced security boundary, not a
+routing hint: it prohibits cloud inference and transmission of prompts, files,
+images, embeddings, or context to external AI providers. Enforcement belongs at
+the provider boundary and must be observable and tested.
+
+`Balanced`, `Best Quality`, and `Cheapest` choose only among policy-permitted
+models and providers. The router may evaluate estimated cost, documented provider
+limits, context limits, latency, model capabilities, local availability, and
+device capabilities, but must not invent unavailable provider billing or quota
+APIs. Explicit model selection and denial policy still win over convenience.
+
+These profiles and cost controls are target work, not current ModelRouter
+behavior. See ADR-0010 and [`RISK_REGISTER.md`](RISK_REGISTER.md).

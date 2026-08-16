@@ -1,162 +1,212 @@
-# AgentGraph OS — Roadmap
+# AgentGraph OS Roadmap
 
-This roadmap preserves the original six-phase project sequence. Phase files define implementation details and gates.
+Phase files define implementation scope and gates. Phases 1-7 are historical implemented work. Phase 8 establishes the approved target baseline; later phases are planned and must not be described as implemented.
 
-## Phase 1 — Foundation
+## Completed History
 
-**Status:** DONE. Foundation artifacts and `pnpm check` were independently
-verified on 2026-08-11.
+### Phase 1 - Foundation
 
-Goal: establish repository, architecture direction, documentation, configuration skeleton, license, CI/developer structure, and empty component boundaries without building product business logic.
+**Status:** DONE. Established the repository, local-first modular-monolith direction, documentation, non-secret configuration, and `pnpm check`.
 
-Core outputs:
+### Phase 2 - Backend Core
 
-- repository `agentgraph-os`;
-- top-level project structure;
-- React/React Flow frontend direction;
-- Python/FastAPI/LangGraph backend direction;
-- local/cloud model configuration direction;
-- documentation skeleton;
-- Git hygiene and secret exclusions.
-- offline Foundation verification through `pnpm check`.
+**Status:** DONE. Delivered FastAPI lifecycle APIs, SQLite/Alembic persistence, deterministic LangGraph execution, cancellation, restart-failure recovery, and isolated tests.
 
-## Phase 2 — Backend Core
+### Phase 3 - Model Router and Real LLM Providers
 
-**Status:** DONE. Lifecycle API, SQLite/Alembic persistence, deterministic
-LangGraph execution, cancellation, restart recovery, tests, and `pnpm check`
-were verified on 2026-08-11.
+**Status:** DONE. Delivered provider-neutral routing, Ollama, local OpenCode model bridge, optional OpenAI-compatible transport, model metadata, and live Ollama verification. Credential-dependent live checks remain `NOT RUN`.
 
-Goal: turn the foundation into a real local backend lifecycle.
+### Remote Interface Foundation
 
-Deliver:
+**Status:** IMPLEMENTED alongside Phase 3. Delivered versioned REST/WebSocket contracts, normalized events and commands, server-side authorization foundation, and process-local approvals. It did not implement remote access.
 
-- FastAPI application and health endpoint;
-- Agent and AgentRun domain/persistence models;
-- SQLite + SQLAlchemy + Alembic;
-- repositories and `AgentManager`;
-- process-local run registry and real cancellation;
-- restart recovery;
-- real minimal LangGraph execution without LLM dependency;
-- lifecycle API and tests.
+### Phase 4 - Visual Interface
 
-Gate: `docs/phases/PHASE_02_BACKEND_CORE.md`.
+**Status:** DONE. Delivered the React/Vite browser workspace, persisted visual graphs, run/provider/approval observation, and owner-confirmed manual browser acceptance.
 
-## Phase 3 — Model Router & Real LLM Providers
+### Phase 5 - Multimodal Vision Layer
 
-**Status:** DONE. Provider-neutral routing, Ollama, OpenCode bridge,
-OpenAI-compatible transport, LLM graph integration, metadata, and provider
-visibility were verified on 2026-08-11. Live Ollama passed; credential-dependent
-OpenCode/cloud live checks were `NOT RUN`.
+**Status:** DONE. Delivered local multimodal observation, secure asset and folder boundaries, persisted analyses, and owner-confirmed acceptance.
 
-Goal: replace deterministic model behavior with provider-agnostic real LLM execution.
+### Phase 6 - Lexi Integration
 
-Deliver:
+**Status:** DONE. Delivered Lexi workflow, scoped SQLite Memory MVP, controlled Tool MVP, `/lexi` browser UI, live local Ollama smoke, and owner acceptance.
 
-- `ModelRef` and normalized model contracts;
-- ProviderRegistry + ModelRouter;
-- Ollama provider;
-- OpenCode local bridge for already-configured ChatGPT subscription provider auth;
-- generic OpenAI-compatible provider / OpenRouter configuration;
-- provider health/discovery, timeouts, cancellation, normalized errors;
-- run metadata without secret leakage;
-- real LLM node inside LangGraph.
+### Phase 7 - Multi-Agent Graph Orchestration and Delegation
 
-Gate: `docs/phases/PHASE_03_MODEL_ROUTER_REAL_LLM_PROVIDERS.md`.
+**Status:** DONE. Delivered validated static `team-v1` DAGs, persisted child runs, bounded delegation, run-tree inspection, local Ollama smokes, and owner browser acceptance. It did not implement autonomous planning or workers.
 
-## Remote Interface Foundation
+## Active Documentation Baseline
 
-**Status:** Implemented as a compatibility foundation alongside the completed
-Phase 3 backend; it does not start Phase 4.
+### Phase 8 - Future Architecture and Roadmap Baseline
 
-Delivered: normalized remote events and commands, a transport-neutral event bus,
-versioned REST and WebSocket contracts, server-side authorization, and a
-process-local approval contract. Future work builds on these shared contracts:
+**Status:** DONE. Documentation work, `pnpm check`, and owner cross-document
+review are complete.
 
-- Web interface, responsive/mobile UI, approvals UI, logs, and PWA support;
-- messaging gateway, Telegram notifications/control/approvals, then Discord,
-  WhatsApp, and Slack adapters;
-- a thin TUI dashboard for runs, providers, logs, and approvals.
+Objective: establish the Post-Phase-7 future vision, current-versus-target architecture map, risk register, ADR baseline, and dependency-ordered plan.
 
-These clients must not duplicate orchestration or become a runtime authority.
+Deliverables: canonical vision, glossary, specialized target records, updated architecture/status/rules, ADRs, and owner cross-document review.
 
-## Phase 4 — Visual Interface
+Dependencies: Phases 1-7 complete.
 
-**Status:** DONE. Automated checks and owner-confirmed browser manual acceptance
-were completed on 2026-08-12.
+Security: formalizes authorization-first autonomy, Local Only routing boundary, trust, approvals, credential handling, and recovery risks without implementing them.
 
-Goal: create the first practical React/TypeScript + React Flow workspace over the stable backend contracts.
+Gate: documentation consistency review, `pnpm check`, and owner baseline review passed.
 
-Deliver:
+## Planned Implementation Sequence
 
-- application shell;
-- graph canvas and typed node/edge representation;
-- agent creation/configuration UI;
-- run/start/stop/status observability;
-- provider/model selection based on backend discovery;
-- error and loading states;
-- responsive/accessibility baseline.
+### Phase 9 - Distributed Core Foundation
 
-Delivered:
+Objective: introduce a secure, single-writer Core/Node protocol for a NAS Primary Core and explicitly registered workers.
 
-- Vite/React browser workspace with typed API client and normalized WebSocket events;
-- dashboard, projects, agents, persisted visual graphs, run workspace, approvals,
-  providers, events, and client preferences;
-- responsive dark technical layout, state/error handling, and frontend tests;
-- API graph persistence operation secured through the shared command boundary.
+Deliverables: node registration/capabilities, Core-owned state boundary, heartbeat/health model, eligible-backup prerequisites, and observability.
 
-Do not move orchestration business logic into the browser.
+Dependencies: Phase 8.
 
-## Phase 5 — Multimodal Vision Layer
+Security: node identity and least-privilege capabilities; no public remote control.
 
-**Status:** DONE. Automated checks and owner-confirmed manual acceptance are complete.
+Gate: isolated multi-node protocol tests prove worker authority cannot bypass Core policy; documented failover design review before promotion is enabled.
 
-Goal: introduce local-first, provider-agnostic image observation through the
-existing model router without computer-control actions.
+### Phase 10 - Resilience, Checkpoints, and Recovery
 
-Deliver direction:
+Objective: make long-running work recoverable without replaying unsafe effects.
 
-- typed multimodal model messages and Ollama image support;
-- persisted image assets and analysis history;
-- secure upload and registered-folder scanning;
-- normalized vision events and browser Vision workspace;
-- no required model download for automated tests.
+Deliverables: versioned checkpoints, action ledger, incomplete-run recovery, fenced failover procedure, recovery observability, and explicit rollback limits.
 
-## Phase 6 — Lexi Integration
+Dependencies: Phase 9.
 
-**Status:** DONE. Lexi workflow, Memory MVP, controlled Tool MVP, browser
-workspace, automated verification, local Ollama smoke, and owner manual
-acceptance are complete.
+Security: uncertain side effects stop for approval; split-brain and duplicate execution protections are tested.
 
-Goal: integrate Lexi as the first real end-to-end assistant/workflow on top of AgentGraph OS boundaries.
+Gate: fault-injection tests cover restart, interrupted actions, corrupt checkpoints, and safe recovery decisions.
 
-Deliver direction:
+### Phase 11 - Identity, Trust, Approvals, and Credentials
 
-- Lexi agent/workflow definition;
-- model routing through AgentGraph contracts;
-- durable scoped SQLite Memory MVP;
-- controlled Linux/assistant tool boundary rather than arbitrary shell;
-- observable runs and cancellation;
-- frontend representation of the Lexi workflow;
-- end-to-end local-first acceptance flow.
+Objective: establish durable user/device trust and action authorization.
 
-## Phase 7 — Multi-Agent Graph Orchestration and Delegation
+Deliverables: durable approvals/grants, trusted-device lifecycle, passkey/2FA design and implementation, audit, credential broker/vault boundary, revocation, and emergency lockdown.
 
-**Status:** DONE. Automated verification, real local Ollama team smokes, and
-owner manual browser acceptance are complete.
+Dependencies: Phases 9-10.
 
-Phase 7 is the first numbered post-MVP phase. It adds validated static team
-DAGs, normal persisted child runs, bounded scheduling/delegation, run-tree
-inspection, and browser composition/inspection without autonomous planning.
+Security: this is the security foundation for privileged automation and broader remote access.
 
-## Remaining post-MVP tracks
+Gate: authorization, expiry, revocation, lockdown, credential-redaction, and adversarial access tests pass.
 
-Only after Phase 6 review:
+### Phase 12 - Lexi Orchestrator and Project State
 
-- MCP/tool registry and plugin runtime;
-- workflow templates/marketplace concepts;
-- scheduling/background jobs;
-- desktop packaging;
-- remote access/Telegram integrations;
-- optional distributed workers or external databases when justified by measured need.
+Objective: evolve Lexi from the MVP workflow into a bounded Main Agent for approved project work.
 
-These items must not be pulled into earlier phases by default.
+Deliverables: Goals/Projects/Phases/Tasks/Runs hierarchy, brief/detailed plans, bounded temporary graphs, retry/blocker policy, reusable-workflow proposal flow, project-state provenance, and run-history views.
+
+Dependencies: Phases 10-11.
+
+Security: planning cannot expand scope; execution remains subject to approvals and grants.
+
+Gate: end-to-end scoped task tests prove planning, pause/resume decisions, and blocker escalation without implicit user-impacting execution.
+
+### Phase 13 - Persistent Memory Graph and Policy Routing
+
+Objective: add provenance-aware long-term memory and enforce model-routing profiles.
+
+Deliverables: working/episodic/knowledge/personal memory contracts, entity relations, provenance/supersession, memory workspace, Local Only/Balanced/Best Quality/Cheapest policies, cost/limit observability.
+
+Dependencies: Phases 11-12.
+
+Security: Local Only blocks AI-provider data egress; memory remains scoped, reviewable, and untrusted.
+
+Gate: provenance, correction, revocation, poisoned-memory, and denied-egress tests pass.
+
+### Phase 14 - OpenCode First-Class Coder Agent
+
+Objective: coordinate approved development work through an observable Coder Agent without weakening repository or credential boundaries.
+
+Deliverables: project-context handoff, session state/reporting, diff/test/review artifacts, user-decision escalation, cancellation, and multi-session isolation policy.
+
+Dependencies: Phases 11-13.
+
+Security: OpenCode credentials remain owned by OpenCode; repository access and concurrent ownership are bounded.
+
+Gate: isolated repository and conflict tests prove no raw secret access, unauthorized phase progression, or uncoordinated conflicting changes.
+
+### Phase 15 - Device Scheduling and Multi-Node Execution
+
+Objective: schedule approved graph work across registered workers.
+
+Deliverables: capability/resource-aware scheduler, durable device assignment, multi-node graph execution, resource limits, health-aware placement, and cancellation/recovery integration.
+
+Dependencies: Phases 9-14.
+
+Security: workers execute only assigned capability-scoped work and cannot escalate authority.
+
+Gate: deterministic multi-node tests cover assignment, loss, cancellation, recovery, and resource-limit behavior.
+
+### Phase 16 - Voice and Proactive Assistant
+
+Objective: add policy-preserving voice interaction and significant-event recommendations.
+
+Deliverables: push-to-talk/wake-word evaluation, local-first ASR/TTS path, voice identity/approval flow, notification policy, and bounded proactive briefs.
+
+Dependencies: Phases 11-15.
+
+Security: speech is not implicit authorization; proactive recommendations do not perform actions.
+
+Gate: voice and text paths demonstrate equivalent authorization, privacy, and low-bandwidth status behavior.
+
+### Phase 17 - Remote, PWA, Notifications, and Remote View
+
+Objective: safely extend user access beyond the local browser.
+
+Deliverables: installable PWA, Web Push, Telegram fallback/control policy, low-bandwidth mode, notification routing/severity, and read-oriented Remote View.
+
+Dependencies: Phases 11, 15-16.
+
+Security: strong remote identity, device trust, rate limits, audit, and revocation are mandatory; Remote View does not imply control.
+
+Gate: cross-device access, disconnect, revocation, approval, and degraded-network tests pass without a client becoming lifecycle authority.
+
+### Phase 18 - Unified Files and Semantic Search
+
+Objective: provide a truthful logical workspace over registered storage.
+
+Deliverables: physical-location-aware files, registered indexing roots, metadata and content search, semantic search policy, and memory/project links.
+
+Dependencies: Phases 11, 13, 15, 17.
+
+Security: indexing and retrieval honor location, user access, Local Only, and privacy boundaries.
+
+Gate: authorization, remote-location, deletion, index privacy, and stale-index tests pass.
+
+### Phase 19 - Backup and Disaster Recovery Hardening
+
+Objective: validate recoverability of Core data and user-owned state.
+
+Deliverables: backup lifecycle, encryption/key-recovery design, integrity checks, retention, restore tooling, and replacement-machine recovery procedure.
+
+Dependencies: Phases 10-18.
+
+Security: backups and restored credentials use least exposure; restoration is auditable.
+
+Gate: repeated disaster-recovery drills restore a valid isolated environment and truthfully report non-recoverable external dependencies.
+
+### Phase 20 - Advanced Dashboard and Context-Aware UX
+
+Objective: make system state and Lexi understandable without moving authority into the client.
+
+Deliverables: customizable dashboards, widgets, structured UI context, Goals/Tasks/Devices/Memory/Run views, and accessible responsive workflows.
+
+Dependencies: Phases 12-19.
+
+Security: UI context is typed, minimized, and cannot grant permissions or alter server truth.
+
+Gate: current-state, approval, device, and error views remain accurate across desktop and mobile layouts.
+
+### Phase 21 - Higher Autonomy Within Policy
+
+Objective: expand unattended work only after the preceding safety, recovery, identity, observability, and control foundations are proven.
+
+Deliverables: explicit autonomy policies, budgets, delayed/background task controls, automatic safe remediation candidates, and reviewable autonomy audit.
+
+Dependencies: Phases 9-20.
+
+Security: every automated action remains policy-, scope-, approval-, and lockdown-aware; no autonomous scope expansion.
+
+Gate: scenario, fault, adversarial, cost, and owner acceptance tests show safe stop, recovery, and escalation behavior.

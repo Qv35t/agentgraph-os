@@ -1,59 +1,53 @@
-# AgentGraph OS — Project Status
+# AgentGraph OS Project Status
 
 Last updated: **2026-08-16**
 
-## Current phase
+## Current Phase
 
-**Phase 7 - Multi-Agent Graph Orchestration and Delegation is complete.**
-Automated verification, real local Ollama team smokes, and owner manual browser
-acceptance passed. Phase 6 completed the original MVP.
+**Phase 8 - Future Architecture and Roadmap Baseline: DONE.**
 
-The Remote Interface Foundation is implemented as a Phase 3 compatibility
-extension: normalized events/commands, versioned REST and WebSocket transport,
-server-side authorization, and process-local approvals. `pnpm check` verified
-the full backend suite (`42 passed`) on 2026-08-11. It does not begin Phase 4.
+Phase 8 is documentation-only. Its Post-Phase-7 baseline, `pnpm check`, and
+owner repository cross-document review passed. It does not implement distributed
+runtime, durable security/trust, autonomous planning, voice, remote access, or
+other future capabilities.
 
-Phase 4 automated verification on 2026-08-12 passed: root `pnpm check`,
-frontend production build, Ruff, mypy, and the backend suite (`43 passed`). An
-isolated local startup smoke served the Vite app and an authorized `/api/v1`
-request. Owner-confirmed manual browser acceptance is complete.
+## Implemented
 
-The Foundation gate was independently verified on 2026-08-11 through the
-offline repository check and a manual repository audit. No backend, provider,
-frontend, memory, tool, or Lexi implementation was introduced as part of this
-verification.
+| Phase | State | Verified implementation |
+|---|---|---|
+| 1 - Foundation | DONE | Repository structure, local-first/security documentation, model metadata, and quality gate |
+| 2 - Backend Core | DONE | FastAPI lifecycle, SQLite/Alembic, LangGraph runtime, cancellation, truthful restart failure recovery |
+| 3 - Model Router and Providers | DONE | Provider-neutral routing, Ollama, local OpenCode model bridge, optional OpenAI-compatible adapter, live Ollama smoke |
+| Remote Interface Foundation | IMPLEMENTED | Versioned REST/WebSocket contracts, normalized events, server authorization foundation, process-local approvals |
+| 4 - Visual Interface | DONE | React/Vite browser client, persisted visual graphs, run/provider/approval observation, owner browser acceptance |
+| 5 - Multimodal Vision | DONE | Local multimodal observation, validated assets/folders, persisted analyses, owner acceptance |
+| 6 - Lexi Integration | DONE | Lexi workflow, scoped SQLite Memory MVP, controlled Tool MVP, local Ollama smoke, owner acceptance |
+| 7 - Multi-Agent Orchestration | DONE | Validated static team DAGs, persisted child runs, bounded delegation, run tree, local Ollama smokes, owner acceptance |
+
+Current limitations are intentional: the backend defaults to loopback; remote control is disabled by default; approvals are process-local; active runs fail on restart rather than resume; and the OpenCode bridge is model transport only.
+
+## Approved or Planned Target
+
+The following are approved/planned architecture, not implemented capability:
+
+- NAS Primary Core, eligible Backup Core, registered workers, scheduling, and multi-node execution.
+- Versioned checkpoints, safe recovery, rollback ledger, backup, and disaster recovery.
+- Durable identity/trusted devices, passkeys/2FA, approvals/grants, credential broker/vault, lockdown, and broader remote access.
+- Lexi Main Agent planning, Goals/Projects/Tasks, reusable workflows, and higher autonomy within policy.
+- Provenance-aware memory graph, enforced routing profiles including Local Only, first-class OpenCode Coder Agent, voice, PWA/Telegram/Remote View, unified files/semantic search, and advanced dashboard.
+
+The canonical target records are [`FUTURE_VISION.md`](FUTURE_VISION.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), and [`ROADMAP.md`](ROADMAP.md).
+
+## Phase State
 
 | Phase | State | Gate |
 |---|---|---|
-| 1 — Foundation | DONE | Structure, documentation, security baseline, model metadata, and `pnpm check` verified |
-| 2 — Backend Core | DONE | FastAPI lifecycle API, SQLite/Alembic, LangGraph, cancellation, recovery, tests, and `pnpm check` verified |
-| 3 — Model Router & Providers | DONE | Router, three adapters, LLM graph, metadata, provider API, remote-interface foundation, tests, and live Ollama verified |
-| 4 — Visual Interface | DONE | Browser UI, versioned API client, visual graph persistence, live events, manual browser acceptance, and automated checks verified |
-| 5 — Multimodal Vision Layer | DONE | Local multimodal contracts, persisted assets/analyses, secure folder boundary, Vision UI, automated checks, and owner-confirmed manual acceptance complete |
-| 6 — Lexi Integration | DONE | Lexi workflow, scoped memory, controlled tools, `/lexi` UI, automated checks, live Ollama smoke, and owner manual acceptance complete |
-| 7 — Multi-Agent Orchestration | DONE | Validated team DAGs, persistent child runs, hierarchy API/UI, automated verification, local Ollama smokes, and owner manual acceptance complete |
+| 8 - Future Architecture and Roadmap Baseline | DONE | Documentation consistency, `pnpm check`, and owner repository cross-document review complete |
+| 9 - Distributed Core Foundation | PLANNED | Core/worker protocol and failover design review |
+| 10 - Resilience, Checkpoints, and Recovery | PLANNED | Fault-injection recovery verification |
+| 11 - Identity, Trust, Approvals, and Credentials | PLANNED | Authorization and adversarial security verification |
+| 12-21 | FUTURE | Dependency-ordered gates in `ROADMAP.md` |
 
-## Verified repository facts before this documentation pack
+## Status Update Rule
 
-At documentation preparation time, the public repository already contained:
-
-- a README describing React + React Flow, Python + FastAPI + LangGraph, Ollama/OpenAI/OpenRouter, Qdrant/Mem0;
-- a local-first architecture stub;
-- a six-phase roadmap;
-- a `.gitignore` covering environment files, Python/Node outputs, databases, model weights, logs, Qdrant storage, credentials, and key files.
-
-## Next action
-
-The numbered Phase 7 post-MVP orchestration track is complete.
-
-Before writing code, OpenCode must inspect the actual repository tree and dependency manifests. The phase file contains architecture targets, not permission to duplicate already-correct modules.
-
-## Status update rule
-
-Only move a phase to `DONE` after:
-
-1. automated checks required by the phase pass;
-2. required migrations/startup checks pass;
-3. manual smoke checks explicitly required by the phase are actually executed;
-4. architecture/docs reflect implemented behavior;
-5. known deviations are documented.
+Only move an implementation phase to `DONE` after its required automated checks, migrations/startup checks, manual acceptance, documentation, and known-deviation records have been observed. Phase 8 required its distinct owner cross-document review, which is complete.

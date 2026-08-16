@@ -14,3 +14,8 @@ Load for any non-trivial implementation task.
 10. Update status/docs only after observed results justify the update.
 11. Never claim commands were run unless they were actually run.
 12. Do not commit/push unless explicitly requested by the user.
+13. Treat `PROJECT_STATUS.md` and current architecture sections as implementation
+    truth. Future vision, roadmap, and target ADRs describe approved intent, not
+    existing capability.
+14. A recommendation, plan, model output, or inferred status is never user
+    authorization for a new user-impacting action or scope expansion.
