@@ -57,15 +57,21 @@ Gate: documentation consistency review, `pnpm check`, and owner baseline review 
 
 ### Phase 9 - Distributed Core Foundation
 
-Objective: introduce a secure, single-writer Core/Node protocol for a NAS Primary Core and explicitly registered workers.
+**Status:** DONE. Automated verification, same-machine Core/Worker lifecycle,
+and owner-confirmed browser Nodes acceptance passed on 2026-08-17. Physical
+two-machine validation remains recommended, not blocking.
 
-Deliverables: node registration/capabilities, Core-owned state boundary, heartbeat/health model, eligible-backup prerequisites, and observability.
+Objective: introduce a secure, single-writer Core/Node protocol for an explicit Core and registered workers.
+
+Deliverables: persistent node registration/capabilities, Core-owned state boundary, heartbeat/health model, bounded v1 probe dispatch, authorized Nodes API/UI, and observability. Core failover and backup promotion remain deferred.
 
 Dependencies: Phase 8.
 
 Security: node identity and least-privilege capabilities; no public remote control.
 
-Gate: isolated multi-node protocol tests prove worker authority cannot bypass Core policy; documented failover design review before promotion is enabled.
+Gate: typed protocol/security tests, migrations, frontend checks/build, browser
+Nodes acceptance, and same-machine lifecycle acceptance passed. Failover
+promotion remains a later phase and is not enabled.
 
 ### Phase 10 - Resilience, Checkpoints, and Recovery
 

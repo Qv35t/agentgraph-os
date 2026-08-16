@@ -8,12 +8,17 @@ Local-first visual operating environment for AI agents.
 - Python, FastAPI, LangGraph, SQLite, SQLAlchemy, and Alembic backend.
 - Provider-neutral routing for local Ollama, an optional local OpenCode model bridge, and an optional OpenAI-compatible provider.
 - Local vision observation, scoped SQLite Memory MVP, controlled typed tools, Lexi workflow, and bounded static multi-agent DAGs.
+- Phase 9 Core/Worker foundation: persistent Worker registry, protected outbound
+  Worker transport, safe capabilities, and only `system.probe` dispatch.
 
 The backend binds to loopback by default. OpenCode bridge mode is model transport only; it does not copy OpenCode credentials or provide a first-class Coder Agent. See [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for verified current behavior and limitations.
 
 ## Future Direction
 
-Phase 8 has prepared the Post-Phase-7 documentation baseline and is awaiting owner review. NAS Core/failover, durable recovery and approvals, trusted remote access, autonomous Lexi planning, voice, PWA/Telegram, OpenCode orchestration, semantic memory/files, and advanced dashboard are planned target capabilities, not implemented features.
+Phase 9 is complete. NAS Core/failover, durable recovery and approvals, trusted
+remote access, autonomous Lexi planning, voice, PWA/Telegram, OpenCode
+orchestration, semantic memory/files, and advanced dashboard remain planned
+target capabilities.
 
 Read [`docs/FUTURE_VISION.md`](docs/FUTURE_VISION.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), and [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
@@ -35,6 +40,13 @@ pnpm check
 It runs frontend checks plus backend Ruff, mypy, and isolated tests. It does not call Ollama, OpenCode, or cloud providers.
 
 ## Backend Development
+
+Run every command in this section from the repository root, the directory that
+contains `backend/`, `frontend/`, and `package.json`:
+
+```bash
+cd /path/to/agentgraph-os
+```
 
 Install locked backend dependencies:
 

@@ -1,6 +1,8 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from agentgraph.domain.distributed import NodeRole
+
 
 class Settings(BaseSettings):
     """Runtime configuration with local-safe defaults."""
@@ -48,3 +50,16 @@ class Settings(BaseSettings):
     orchestration_max_depth: int = Field(default=2, ge=0, le=10)
     orchestration_child_timeout_seconds: float = Field(default=120, gt=0, le=3600)
     orchestration_max_context_chars: int = Field(default=24_000, gt=0, le=100_000)
+    node_role: NodeRole = NodeRole.CORE
+    core_url: str | None = None
+    node_name: str = "AgentGraph Worker"
+    node_id_path: str = "./data/worker-node-id"
+    worker_enrollment_secret: str | None = None
+    worker_enabled: bool = False
+    worker_heartbeat_interval_seconds: float = Field(default=10, gt=0, le=300)
+    worker_heartbeat_timeout_seconds: float = Field(default=30, gt=1, le=900)
+    worker_max_connections: int = Field(default=32, gt=0, le=500)
+    worker_max_tasks: int = Field(default=16, gt=0, le=100)
+    worker_max_messages: int = Field(default=64, gt=0, le=1000)
+    worker_reconnect_max_seconds: float = Field(default=30, gt=0, le=300)
+    worker_task_timeout_seconds: float = Field(default=10, gt=0, le=60)

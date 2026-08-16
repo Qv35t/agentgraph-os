@@ -8,10 +8,12 @@ from fastapi.responses import JSONResponse
 
 from agentgraph.api.lexi import lexi_router
 from agentgraph.api.memory import memory_router
+from agentgraph.api.nodes import node_router
 from agentgraph.api.remote import remote_router
 from agentgraph.api.routes import router
 from agentgraph.api.tools import tool_router
 from agentgraph.api.vision import vision_router
+from agentgraph.api.workers import worker_router
 from agentgraph.models.router import DisabledProvider, ModelProvider, ModelRouter
 from agentgraph.persistence.database import create_database_engine, create_session_factory
 from agentgraph.providers.ollama import OllamaProvider
@@ -26,6 +28,7 @@ from agentgraph.runtime.team import TeamGraphRuntime
 from agentgraph.services.lexi import LexiTemplateService
 from agentgraph.services.manager import AgentManager, AgentRuntime
 from agentgraph.services.memory import MemoryService
+from agentgraph.services.nodes import NodeService
 from agentgraph.services.remote import ApprovalService, AuthorizationService, RemoteCommandService
 from agentgraph.services.tools import ToolService
 from agentgraph.services.vision import VisionService
@@ -46,6 +49,7 @@ def create_app(
         registry = RunRegistry()
         event_bus = RuntimeEventBus()
         manager: AgentManager | None = None
+        liveness_task: asyncio.Task[None] | None = None
 
         async def close_resources() -> None:
             try:
@@ -106,6 +110,12 @@ def create_app(
                 runtime_settings.remote_control_enabled, runtime_settings.remote_control_policies
             )
             app.state.authorization = authorization
+            app.state.node_service = NodeService(create_session_factory(engine), event_bus, runtime_settings)
+            if runtime_settings.node_role.value == "core":
+                core_name = runtime_settings.node_name
+                if core_name == "AgentGraph Worker":
+                    core_name = "AgentGraph Core"
+                await app.state.node_service.ensure_core(core_name)
             app.state.remote_commands = RemoteCommandService(manager, model_router, authorization)
             app.state.approvals = approvals
             app.state.memory_service = memory_service
@@ -116,8 +126,19 @@ def create_app(
             )
             await app.state.vision_service.recover_stale_analyses()
             app.state.settings = runtime_settings
+            if runtime_settings.node_role.value == "core":
+                liveness_task = asyncio.create_task(_node_liveness_loop(app.state.node_service, runtime_settings))
             yield
         finally:
+            for task in (liveness_task,):
+                if task is not None:
+                    task.cancel()
+            for task in (liveness_task,):
+                if task is not None:
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
             if manager is None:
                 await close_resources()
             else:
@@ -149,6 +170,8 @@ def create_app(
     if runtime_settings.legacy_api_enabled:
         app.include_router(router)
     app.include_router(remote_router)
+    app.include_router(node_router)
+    app.include_router(worker_router)
     app.include_router(memory_router)
     app.include_router(lexi_router)
     app.include_router(tool_router)
@@ -157,3 +180,9 @@ def create_app(
 
 
 app = create_app()
+
+
+async def _node_liveness_loop(service: NodeService, settings: Settings) -> None:
+    while True:
+        await asyncio.sleep(min(settings.worker_heartbeat_timeout_seconds / 2, 10))
+        await service.mark_stale_offline()

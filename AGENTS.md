@@ -77,6 +77,7 @@ When a referenced file is relevant, use the Read tool to load it. Do **not** pre
 - Phase 6 → `@docs/phases/PHASE_06_LEXI_INTEGRATION.md`
 - Phase 7 → `@docs/phases/PHASE_07_MULTI_AGENT_ORCHESTRATION.md`
 - Phase 8 → `@docs/phases/PHASE_08_FUTURE_ARCHITECTURE_BASELINE.md`
+- Phase 9 → `@docs/phases/PHASE_09_DISTRIBUTED_CORE_FOUNDATION.md`
 
 Prefer the matching `/phase-N` OpenCode command because it injects the correct phase context automatically.
 
@@ -159,6 +160,14 @@ application/API contracts. They must not own or duplicate runtime orchestration,
 provider routing, run state, approval semantics, or authorization. Runtime and
 providers remain independent of UI and messaging SDKs; remote commands require
 server-side authorization; client connections must not determine run lifetime.
+
+## Distributed Core/Worker architecture
+
+AgentGraph Core is the authoritative coordination and persistence plane. Worker
+Nodes provide bounded execution capacity through authenticated typed contracts;
+they must not independently own global AgentGraph state or bypass Core
+authorization, approval, provider, or Local Only policies. Do not introduce a
+second orchestration implementation for Workers: extend shared domain contracts.
 
 ## 9. Git behavior
 

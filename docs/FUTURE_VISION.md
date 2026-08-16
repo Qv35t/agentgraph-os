@@ -30,17 +30,17 @@ The target hierarchy is `Goal -> Project -> Phase -> Task -> Run`. A Run keeps i
 
 ## Target Topology
 
-The target primary topology is a NAS-hosted Primary Core with eligible backup nodes, plus worker nodes such as a main PC and laptop. The Core coordinates state, policy, scheduling, and history; workers provide explicitly registered capabilities. This is a target topology, not the current deployment. See [`architecture/DISTRIBUTED_RUNTIME.md`](architecture/DISTRIBUTED_RUNTIME.md).
+The target primary topology is a NAS-hosted Primary Core with eligible backup nodes, plus worker nodes such as a main PC and laptop. The Core coordinates state, policy, scheduling, and history; workers provide explicitly registered capabilities. The NAS, backup eligibility, scheduling, and failover portions are target architecture; the current Phase 9 foundation has one Core and bounded registered Workers only. See [`architecture/DISTRIBUTED_RUNTIME.md`](architecture/DISTRIBUTED_RUNTIME.md).
 
 ## What Exists Today
 
-Phases 1-7 implemented a local-first modular monolith: FastAPI and SQLite persistence, provider-neutral model routing, a browser UI, vision observation, Lexi MVP with scoped SQLite memory and controlled tools, and bounded static multi-agent DAGs. The default service remains loopback-only. The canonical current-state record is [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
+Phases 1-9 implemented a local-first modular monolith: FastAPI and SQLite persistence, provider-neutral model routing, a browser UI, vision observation, Lexi MVP with scoped SQLite memory and controlled tools, bounded static multi-agent DAGs, and a persistent Core-owned Worker registry with safe probe transport. The default service remains loopback-only. The canonical current-state record is [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
 
 ## Not Implemented
 
 The following are planned target capabilities, not present runtime guarantees:
 
-- NAS Core or failover, distributed workers, scheduling, checkpoints, resume, rollback ledger, or disaster recovery.
+- NAS Core deployment, failover, scheduling, checkpoints, resume, rollback ledger, or disaster recovery.
 - Durable approvals, passkeys, trusted-device identity, credential broker, secrets vault, or emergency lockdown.
 - Autonomous Lexi planning, goals/projects/tasks, reusable workflows, or proactive execution.
 - First-class OpenCode coding sessions or multi-session coordination.

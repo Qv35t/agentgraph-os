@@ -1,15 +1,17 @@
 # AgentGraph OS Project Status
 
-Last updated: **2026-08-16**
+Last updated: **2026-08-17**
 
 ## Current Phase
 
-**Phase 8 - Future Architecture and Roadmap Baseline: DONE.**
+**Phase 9 - Distributed Core Foundation: DONE.**
 
-Phase 8 is documentation-only. Its Post-Phase-7 baseline, `pnpm check`, and
-owner repository cross-document review passed. It does not implement distributed
-runtime, durable security/trust, autonomous planning, voice, remote access, or
-other future capabilities.
+Phase 9 adds a minimal persistent Core/Worker foundation: explicit protected
+enrollment, stable Worker identity, liveness/capability reporting, authorized
+node controls, and one bounded `system.probe` operation. Automated verification,
+same-machine backend transport acceptance, and owner-confirmed browser Nodes
+acceptance passed on 2026-08-17. Physical two-machine validation remains a
+recommended non-blocking real-hardware follow-up.
 
 ## Implemented
 
@@ -23,6 +25,7 @@ other future capabilities.
 | 5 - Multimodal Vision | DONE | Local multimodal observation, validated assets/folders, persisted analyses, owner acceptance |
 | 6 - Lexi Integration | DONE | Lexi workflow, scoped SQLite Memory MVP, controlled Tool MVP, local Ollama smoke, owner acceptance |
 | 7 - Multi-Agent Orchestration | DONE | Validated static team DAGs, persisted child runs, bounded delegation, run tree, local Ollama smokes, owner acceptance |
+| 9 - Distributed Core Foundation | DONE | Persistent Core-owned node registry, typed v1 Worker transport, bounded probe dispatch, APIs, Nodes UI, and accepted same-machine lifecycle |
 
 Current limitations are intentional: the backend defaults to loopback; remote control is disabled by default; approvals are process-local; active runs fail on restart rather than resume; and the OpenCode bridge is model transport only.
 
@@ -43,7 +46,7 @@ The canonical target records are [`FUTURE_VISION.md`](FUTURE_VISION.md), [`ARCHI
 | Phase | State | Gate |
 |---|---|---|
 | 8 - Future Architecture and Roadmap Baseline | DONE | Documentation consistency, `pnpm check`, and owner repository cross-document review complete |
-| 9 - Distributed Core Foundation | PLANNED | Core/worker protocol and failover design review |
+| 9 - Distributed Core Foundation | DONE | Automated checks, browser Nodes acceptance, and same-machine Core/Worker lifecycle acceptance passed; two-machine validation is recommended, not blocking |
 | 10 - Resilience, Checkpoints, and Recovery | PLANNED | Fault-injection recovery verification |
 | 11 - Identity, Trust, Approvals, and Credentials | PLANNED | Authorization and adversarial security verification |
 | 12-21 | FUTURE | Dependency-ordered gates in `ROADMAP.md` |

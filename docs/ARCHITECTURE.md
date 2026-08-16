@@ -2,7 +2,7 @@
 
 This map separates the **implemented current state** from the **approved target architecture**. A target document is not authorization to add its capability outside its roadmap phase.
 
-## Current State: Phases 1-7
+## Current State: Phases 1-9
 
 AgentGraph OS is a local-first modular monolith. A loopback FastAPI application is the lifecycle and authorization authority. It persists durable records in SQLite while process-local handles track live work. The browser is a client of versioned REST and normalized WebSocket contracts, never a runtime authority.
 
@@ -21,8 +21,11 @@ flowchart TD
   Runtime --> Memory[Scoped SQLite MemoryService]
   Runtime --> Tools[Controlled ToolService]
   Manager --> Events[RuntimeEventBus]
-  Events --> WS
-  Team[team-v1 static DAG] --> Manager
+    Events --> WS
+    Team[team-v1 static DAG] --> Manager
+    Core[Core node registry] --> DB
+    Worker[Outbound Worker] --> InternalWS[/ws/internal/workers]
+    InternalWS --> Core
 ```
 
 Implemented boundaries:
@@ -33,6 +36,10 @@ Implemented boundaries:
 - Vision is local observation through the model boundary with validated asset and folder controls.
 - Remote control is disabled by default. Current authorization uses local configuration and current approvals are process-local, not durable.
 - Restart recovery truthfully fails active runs. It does not checkpoint or resume work.
+- Phase 9 Core persists Worker registry state. Workers reconnect using a stable
+  opaque ID and an HMAC enrollment proof, report bounded safe capabilities, and
+  can execute only typed `system.probe`. There is one Core; no scheduler,
+  failover, distributed recovery, or arbitrary remote execution exists.
 
 Detailed current contracts: [`architecture/REMOTE_INTERFACES.md`](architecture/REMOTE_INTERFACES.md), [`architecture/LEXI.md`](architecture/LEXI.md), [`architecture/MULTI_AGENT_ORCHESTRATION.md`](architecture/MULTI_AGENT_ORCHESTRATION.md), [`architecture/VISION.md`](architecture/VISION.md), [`MEMORY.md`](MEMORY.md), [`MODEL_ROUTER.md`](MODEL_ROUTER.md), and [`TOOLS.md`](TOOLS.md).
 

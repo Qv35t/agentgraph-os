@@ -17,8 +17,10 @@ import {
   type Memory,
   type MemoryKind,
   type MemoryUsage,
+  type NodeInfo,
   type Project,
   type Provider,
+  type ProbeResult,
   type Run,
   type RunTreeNode,
   type RuntimeEvent,
@@ -33,6 +35,8 @@ import {
   lexiSchema,
   memorySchema,
   memoryUsageSchema,
+  nodeSchema,
+  probeResultSchema,
   toolInvocationSchema,
 } from "./contracts";
 
@@ -104,6 +108,11 @@ export const api = {
   deleteMemory: (id: string, agentId: string) => request<void>(`/memory/${id}?agent_id=${encodeURIComponent(agentId)}`, z.void(), { method: "DELETE" }),
   runMemory: (runId: string) => request<MemoryUsage[]>(`/memory/runs/${runId}`, z.array(memoryUsageSchema)),
   runTools: (runId: string) => request<ToolInvocation[]>(`/runs/${runId}/tools`, z.array(toolInvocationSchema)),
+  nodes: () => request<NodeInfo[]>("/nodes", z.array(nodeSchema)),
+  node: (id: string) => request<NodeInfo>(`/nodes/${id}`, nodeSchema),
+  enableNode: (id: string) => request<NodeInfo>(`/nodes/${id}/enable`, nodeSchema, { method: "POST" }),
+  disableNode: (id: string) => request<NodeInfo>(`/nodes/${id}/disable`, nodeSchema, { method: "POST" }),
+  probeNode: (id: string) => request<ProbeResult>(`/nodes/${id}/probe`, probeResultSchema, { method: "POST" }),
 };
 
 export const eventSocketConfig = { identity, eventSchema };

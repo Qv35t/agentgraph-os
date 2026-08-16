@@ -4,7 +4,7 @@ export type Locale = "en" | "ru";
 
 const copy = {
   en: {
-    nav: { dashboard: "Dashboard", projects: "Projects", agents: "Agents", approvals: "Approvals", providers: "Providers", vision: "Vision", lexi: "Lexi", events: "Events", settings: "Settings", help: "Help" },
+    nav: { dashboard: "Dashboard", projects: "Projects", agents: "Agents", approvals: "Approvals", providers: "Providers", vision: "Vision", lexi: "Lexi", nodes: "Nodes", events: "Events", settings: "Settings", help: "Help" },
     shell: { eyebrow: "LOCAL CONTROL PLANE", workspace: "Agent workspace", events: "Events", retry: "Retry", language: "Language", collapse: "Collapse navigation", toggle: "Toggle navigation" },
     help: {
       eyebrow: "OPERATOR GUIDE", title: "Help and operating guide", intro: "AgentGraph OS is a local control plane. The backend remains the source of truth for runs, approvals, providers, and vision data.",
@@ -25,7 +25,7 @@ const copy = {
     },
   },
   ru: {
-    nav: { dashboard: "Панель", projects: "Проекты", agents: "Агенты", approvals: "Подтверждения", providers: "Провайдеры", vision: "Зрение", lexi: "Lexi", events: "События", settings: "Настройки", help: "Помощь" },
+    nav: { dashboard: "Панель", projects: "Проекты", agents: "Агенты", approvals: "Подтверждения", providers: "Провайдеры", vision: "Зрение", lexi: "Lexi", nodes: "Узлы", events: "События", settings: "Настройки", help: "Помощь" },
     shell: { eyebrow: "ЛОКАЛЬНАЯ ПАНЕЛЬ УПРАВЛЕНИЯ", workspace: "Рабочее пространство", events: "События", retry: "Повторить", language: "Язык", collapse: "Свернуть навигацию", toggle: "Открыть навигацию" },
     help: {
       eyebrow: "РУКОВОДСТВО ОПЕРАТОРА", title: "Помощь и руководство", intro: "AgentGraph OS — локальная панель управления. Backend остаётся источником истины для run, подтверждений, провайдеров и данных Vision.",

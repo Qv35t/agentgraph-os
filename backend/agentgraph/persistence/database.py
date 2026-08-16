@@ -16,7 +16,7 @@ def create_database_engine(database_url: str) -> AsyncEngine:
     engine = create_async_engine(database_url, connect_args=connect_args)
 
     if database_url.startswith("sqlite"):
-        _enable_sqlite_foreign_keys(engine)
+        _configure_sqlite(engine)
 
     return engine
 
@@ -25,7 +25,9 @@ def create_session_factory(engine: AsyncEngine) -> SessionFactory:
     return async_sessionmaker(engine, expire_on_commit=False)
 
 
-def _enable_sqlite_foreign_keys(engine: AsyncEngine) -> None:
+def _configure_sqlite(engine: AsyncEngine) -> None:
     @event.listens_for(engine.sync_engine, "connect")
     def enable_foreign_keys(dbapi_connection: Any, _: Any) -> None:
         dbapi_connection.execute("PRAGMA foreign_keys=ON")
+        dbapi_connection.execute("PRAGMA journal_mode=WAL")
+        dbapi_connection.execute("PRAGMA busy_timeout=5000")

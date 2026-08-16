@@ -6,6 +6,7 @@ from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text,
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
+from agentgraph.domain.distributed import NodeRole, NodeStatus
 from agentgraph.domain.entities import AgentStatus, RunStatus
 from agentgraph.domain.vision import VisionAnalysisStatus, VisionMode
 
@@ -81,6 +82,27 @@ class RunDelegationRecord(Base):
     node_id: Mapped[str] = mapped_column(String(100), nullable=False)
     depth: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
+class NodeRecord(Base):
+    __tablename__ = "nodes"
+
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    role: Mapped[NodeRole] = mapped_column(
+        SQLAlchemyEnum(NodeRole, native_enum=False, values_callable=enum_values), nullable=False
+    )
+    status: Mapped[NodeStatus] = mapped_column(
+        SQLAlchemyEnum(NodeStatus, native_enum=False, values_callable=enum_values), nullable=False, index=True
+    )
+    enabled: Mapped[bool] = mapped_column(nullable=False, default=True)
+    enrollment_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    capabilities: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
+    )
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class VisionAssetRecord(Base):

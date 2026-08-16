@@ -1,6 +1,26 @@
-# Distributed Runtime Target
+# Distributed Runtime: Current Foundation and Target
 
-Status: approved target architecture. No distributed Core, worker protocol, or failover is implemented.
+Status: Phase 9 current foundation is DONE. Future failover and scheduling
+remain approved target architecture.
+
+## Current Phase 9 Foundation
+
+One Core owns persistent SQLite node records, enablement, liveness, bounded
+session queues, and pending task state. A Worker has a local opaque ID and opens
+an authenticated reconnecting WebSocket to `/ws/internal/workers`; browser
+clients never connect to Workers directly. Protocol v1 validates message shape
+and a 64 KB message maximum. Enrollment uses an HMAC proof over the node ID and
+a configured secret; Core stores only the derived hash and events do not contain
+the proof or secret.
+
+The sole executable operation is `system.probe`. It has a bounded timeout and
+best-effort at-most-once protection for recently dispatched task IDs. A dropped
+session normalizes pending work as disconnected. This is not exactly-once
+delivery, distributed graph execution, failover, or durable task recovery.
+
+Workers report safe stdlib platform, architecture, CPU/load, and RAM data. They
+do not expose environment variables, paths, arbitrary tools, or a shell. The
+Core should use `wss://` behind TLS when not confined to a trusted local network.
 
 ## Topology
 

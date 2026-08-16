@@ -1,10 +1,10 @@
 import { useEffect, useEffectEvent, useState } from "react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
-import { Activity, Bot, Boxes, CheckSquare, CircuitBoard, Eye, FolderKanban, HelpCircle, PanelLeftClose, PanelLeftOpen, Radio, Settings, Sparkles } from "lucide-react";
+import { Activity, Bot, Boxes, CheckSquare, CircuitBoard, Eye, FolderKanban, HelpCircle, PanelLeftClose, PanelLeftOpen, Radio, Server, Settings, Sparkles } from "lucide-react";
 import { api, ApiError } from "./api";
 import { EventClient, type ConnectionState } from "./events";
 import type { RuntimeEvent } from "./contracts";
-import { AgentsPage, DashboardPage, EventsPage, ProjectPage, ProjectsPage, ProvidersPage, RunPage, ApprovalsPage, SettingsPage, VisionPage, LexiPage } from "./pages";
+import { AgentsPage, DashboardPage, EventsPage, ProjectPage, ProjectsPage, ProvidersPage, RunPage, ApprovalsPage, SettingsPage, VisionPage, LexiPage, NodesPage } from "./pages";
 import { HelpPage } from "./help";
 import { LanguageProvider, useLanguage } from "./i18n";
 
@@ -48,7 +48,7 @@ function Workspace() {
   const nav = [
     ["/", text.nav.dashboard, CircuitBoard], ["/projects", text.nav.projects, FolderKanban], ["/agents", text.nav.agents, Bot],
     ["/approvals", text.nav.approvals, CheckSquare], ["/providers", text.nav.providers, Boxes], ["/vision", text.nav.vision, Eye], ["/lexi", text.nav.lexi, Sparkles],
-    ["/events", text.nav.events, Activity], ["/settings", text.nav.settings, Settings], ["/help", text.nav.help, HelpCircle],
+    ["/nodes", text.nav.nodes, Server], ["/events", text.nav.events, Activity], ["/settings", text.nav.settings, Settings], ["/help", text.nav.help, HelpCircle],
   ] as const;
   return (
     <div className={`app-shell ${sidebarOpen ? "sidebar-open" : ""}`}>
@@ -75,6 +75,7 @@ function Workspace() {
           <Route path="/providers" element={<ProvidersPage />} />
           <Route path="/vision" element={<VisionPage state={state} />} />
           <Route path="/lexi" element={<LexiPage state={state} />} />
+          <Route path="/nodes" element={<NodesPage />} />
           <Route path="/events" element={<EventsPage state={state} />} />
           <Route path="/settings" element={<SettingsPage state={state} />} />
           <Route path="/help" element={<HelpPage />} />

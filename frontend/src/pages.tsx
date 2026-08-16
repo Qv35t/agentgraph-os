@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { addEdge, applyEdgeChanges, applyNodeChanges, Background, Controls, ReactFlow, type Connection, type Edge, type EdgeChange, type Node, type NodeChange, useEdgesState, useNodesState } from "@xyflow/react";
 import { AlertTriangle, ArrowRight, Check, CircleStop, ExternalLink, FolderKanban, Play, Plus, RefreshCw, Trash2, Wrench, X } from "lucide-react";
 import { api, ApiError } from "./api";
-import type { Agent, Approval, GraphDefinition, MemoryKind, Provider, Run, RunTreeNode, RuntimeEvent, SystemInfo, VisionAnalysis, VisionAsset, VisionFolder } from "./contracts";
+import type { Agent, Approval, GraphDefinition, MemoryKind, NodeInfo, Provider, Run, RunTreeNode, RuntimeEvent, SystemInfo, VisionAnalysis, VisionAsset, VisionFolder } from "./contracts";
 import type { AppState } from "./App";
 import { useLanguage } from "./i18n";
 
@@ -11,9 +11,9 @@ const russianLabels: Record<string, string> = {
   "SYSTEM OVERVIEW": "СОСТОЯНИЕ СИСТЕМЫ", "Control room": "Панель управления", "WORKSPACES": "РАБОЧИЕ ПРОСТРАНСТВА", "Projects": "Проекты",
   "PROJECT": "ПРОЕКТ", "AGENT REGISTRY": "РЕЕСТР АГЕНТОВ", "Agents": "Агенты", "RUN WORKSPACE": "РАБОЧЕЕ ПРОСТРАНСТВО RUN",
   "Approvals": "Подтверждения", "MODEL ROUTER": "МАРШРУТИЗАТОР МОДЕЛЕЙ", "Providers": "Провайдеры", "OBSERVABILITY": "НАБЛЮДАЕМОСТЬ", "Events": "События",
-  "CLIENT PREFERENCES": "НАСТРОЙКИ КЛИЕНТА", "Settings": "Настройки", "LOCAL MULTIMODAL": "ЛОКАЛЬНАЯ МУЛЬТИМОДАЛЬНОСТЬ", "Vision workspace": "Рабочее пространство Vision", "Team workflow": "Командный workflow", "Agent reference": "Ссылка на агента", "Run hierarchy": "Иерархия run",
+  "CLIENT PREFERENCES": "НАСТРОЙКИ КЛИЕНТА", "Settings": "Настройки", "NODES": "УЗЛЫ", "Nodes": "Узлы", "LOCAL MULTIMODAL": "ЛОКАЛЬНАЯ МУЛЬТИМОДАЛЬНОСТЬ", "Vision workspace": "Рабочее пространство Vision", "Team workflow": "Командный workflow", "Agent reference": "Ссылка на агента", "Run hierarchy": "Иерархия run",
 };
-const russianStatuses: Record<string, string> = { queued: "в очереди", running: "выполняется", succeeded: "завершено", failed: "ошибка", cancelled: "отменено", idle: "ожидание", available: "доступен", unavailable: "недоступен", disabled: "отключён", pending: "ожидает", approved: "подтверждено", rejected: "отклонено", connected: "подключено", reconnecting: "переподключение", disconnected: "отключено", completed: "завершено" };
+const russianStatuses: Record<string, string> = { queued: "в очереди", running: "выполняется", succeeded: "завершено", failed: "ошибка", cancelled: "отменено", idle: "ожидание", available: "доступен", unavailable: "недоступен", disabled: "отключён", registered: "зарегистрирован", online: "в сети", offline: "не в сети", pending: "ожидает", approved: "подтверждено", rejected: "отклонено", connected: "подключено", reconnecting: "переподключение", disconnected: "отключено", completed: "завершено" };
 
 function useResource<T>(load: () => Promise<T>, dependencies: unknown[] = []) {
   const [data, setData] = useState<T | null>(null);
@@ -53,6 +53,7 @@ export function DashboardPage({ state }: { state: AppState }) {
   const providers = useResource(api.providers);
   const approvals = useResource(api.approvals, [state.events]);
   const health = useResource(api.health);
+  const nodes = useResource(api.nodes);
   const running = agents.data?.filter((agent) => agent.status === "running").length ?? 0;
   return <Page eyebrow="SYSTEM OVERVIEW" title="Control room">
     <div className="metrics">
@@ -61,6 +62,7 @@ export function DashboardPage({ state }: { state: AppState }) {
       <Metric label="Providers" value={String(providers.data?.filter((item) => item.available).length ?? 0)} detail={`${providers.data?.length ?? 0} registered`} />
       <Metric label="Agents" value={String(agents.data?.length ?? 0)} detail={`${running} active`} />
       <Metric label="Approvals" value={String(approvals.data?.length ?? 0)} detail="pending" tone={approvals.data?.length ? "warning" : undefined} />
+      <Metric label="Workers" value={String(nodes.data?.filter((node) => node.role === "worker" && node.status === "online").length ?? 0)} detail={`${nodes.data?.filter((node) => node.role === "worker").length ?? 0} registered`} />
     </div>
     {!system.loading && system.error && <div className="banner warning">Remote control is disabled or this browser identity is not authorized. Read-only health remains available.</div>}
     <div className="dashboard-grid"><Panel title="Live event feed" action={<Link to="/events">View all <ArrowRight size={14} /></Link>}><EventTimeline events={state.events.slice(0, 8)} /></Panel><Panel title="Provider state"><ProviderList providers={providers.data} loading={providers.loading} error={providers.error} retry={providers.refresh} compact /></Panel></div>
@@ -149,6 +151,22 @@ export function ApprovalsPage({ state }: { state: AppState }) {
 }
 
 export function ProvidersPage() { const providers = useResource(api.providers); return <Page eyebrow="MODEL ROUTER" title="Providers"><ProviderList providers={providers.data} loading={providers.loading} error={providers.error} retry={providers.refresh} /></Page>; }
+export function NodesPage() {
+  const nodes = useResource(api.nodes);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [result, setResult] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  async function action(node: NodeInfo, operation: "enable" | "disable" | "probe") {
+    setBusy(`${operation}:${node.node_id}`); setError(null); setResult(null);
+    try {
+      if (operation === "enable") await api.enableNode(node.node_id);
+      else if (operation === "disable") await api.disableNode(node.node_id);
+      else { const probe = await api.probeNode(node.node_id); setResult(`Probe ${probe.task_id.slice(0, 8)} succeeded.`); }
+      nodes.refresh();
+    } catch (reason) { setError(reason instanceof ApiError ? reason : new ApiError("NODE_ACTION_FAILED", "Node action failed.")); } finally { setBusy(null); }
+  }
+  return <Page eyebrow="NODES" title="Nodes">{error && <div className="banner error">{error.code}: {error.message}</div>}{result && <div className="banner">{result}</div>}<Resource result={nodes}>{(items) => items.length ? <div className="table-wrap"><table><thead><tr><th>Name</th><th>Role</th><th>Status</th><th>Platform</th><th>CPU / RAM</th><th>Last seen</th><th /></tr></thead><tbody>{items.map((node) => <tr key={node.node_id}><td><b>{node.name}</b><code>{short(node.node_id)}</code></td><td>{node.role}</td><td><Status value={node.status} /></td><td>{node.capabilities.platform} / {node.capabilities.architecture}<code>{node.capabilities.agentgraph_version}</code></td><td>{node.capabilities.resources.cpu_count} CPU / {node.capabilities.resources.memory_available_bytes ? `${Math.round(node.capabilities.resources.memory_available_bytes / 1_073_741_824)} GB free` : "-"}</td><td>{time(node.last_seen_at)}</td><td>{node.role === "worker" && <><button className="secondary" onClick={() => action(node, "probe")} disabled={busy !== null || !node.enabled || node.status !== "online"}>Probe</button><button className="secondary" onClick={() => action(node, node.enabled ? "disable" : "enable")} disabled={busy !== null}>{node.enabled ? "Disable" : "Enable"}</button></>}</td></tr>)}</tbody></table></div> : <Empty>No workers are enrolled. Distributed workers remain disabled unless explicitly configured.</Empty>}</Resource></Page>;
+}
 function ProviderList({ providers, loading, error, retry, compact = false }: { providers: Provider[] | null; loading: boolean; error: ApiError | null; retry: () => void; compact?: boolean }) { if (loading) return <Loading />; if (error) return <ErrorState error={error} retry={retry} />; if (!providers?.length) return <Empty>No providers discovered.</Empty>; return <div className={compact ? "provider-stack compact" : "provider-stack"}>{providers.map((provider) => <article className="provider" key={provider.provider_id}><div><h3>{provider.provider_id}</h3><div><Status value={provider.available ? "available" : provider.enabled ? "unavailable" : "disabled"} /> <span className="capabilities">{Object.entries(provider.capabilities).filter(([, value]) => value).map(([key]) => key).join(" / ") || "no capabilities"}</span></div></div>{!compact && <><div className="models">{provider.models.length ? provider.models.map((model) => <code key={model}>{provider.provider_id}/{model}</code>) : <span className="muted">No models reported</span>}</div>{provider.error && <p className="form-error">{provider.error_code}: {provider.error}</p>}</>}</article>)}</div>; }
 
 export function EventsPage({ state }: { state: AppState }) { const [type, setType] = useState(""); const [run, setRun] = useState(""); const [agent, setAgent] = useState(""); const events = state.events.filter((event) => (!type || event.type.includes(type)) && (!run || event.run_id?.includes(run)) && (!agent || event.agent_id?.includes(agent))); return <Page eyebrow="OBSERVABILITY" title="Events"><div className="filters"><label>Type<input value={type} onChange={(event) => setType(event.target.value)} placeholder="run.started" /></label><label>Run ID<input value={run} onChange={(event) => setRun(event.target.value)} /></label><label>Agent ID<input value={agent} onChange={(event) => setAgent(event.target.value)} /></label></div><Panel title={`${events.length} loaded events`}><EventTimeline events={events} /></Panel></Page>; }

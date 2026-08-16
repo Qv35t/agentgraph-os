@@ -38,4 +38,12 @@ describe("remote API client", () => {
 
     await expect(api.runTree("run-1")).resolves.toMatchObject({ children: [{ node_id: "research" }] });
   });
+
+  it("parses node registry and probe responses", async () => {
+    const node = { node_id: "node-1", name: "Worker", role: "worker", status: "online", enabled: true, capabilities: { platform: "Linux", architecture: "x86_64", agentgraph_version: "0.1.0", features: ["system.probe"], resources: { cpu_count: 4, load_average: 0, memory_total_bytes: 100, memory_available_bytes: 50 } }, created_at: "2026-08-17T00:00:00Z", updated_at: "2026-08-17T00:00:00Z", last_seen_at: "2026-08-17T00:00:00Z" };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(new Response(JSON.stringify([node]), { status: 200 })).mockResolvedValueOnce(new Response(JSON.stringify({ task_id: "task-1", node_id: "node-1", status: "succeeded", result: { ok: true } }), { status: 200 })));
+
+    await expect(api.nodes()).resolves.toEqual([node]);
+    await expect(api.probeNode("node-1")).resolves.toMatchObject({ status: "succeeded", result: { ok: true } });
+  });
 });

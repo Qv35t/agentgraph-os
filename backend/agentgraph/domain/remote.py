@@ -40,6 +40,14 @@ class RuntimeEventType(StrEnum):
     VISION_ANALYSIS_FAILED = "vision.analysis.failed"
     VISION_FOLDER_SCAN_STARTED = "vision.folder.scan.started"
     VISION_FOLDER_SCAN_COMPLETED = "vision.folder.scan.completed"
+    NODE_REGISTERED = "node.registered"
+    NODE_CONNECTED = "node.connected"
+    NODE_OFFLINE = "node.offline"
+    NODE_DISABLED = "node.disabled"
+    WORKER_TASK_REQUESTED = "worker.task.requested"
+    WORKER_TASK_COMPLETED = "worker.task.completed"
+    WORKER_TASK_FAILED = "worker.task.failed"
+    WORKER_TASK_TIMED_OUT = "worker.task.timed_out"
 
 
 class Permission(StrEnum):

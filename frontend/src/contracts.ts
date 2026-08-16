@@ -10,6 +10,13 @@ export const errorSchema = z.object({
 export const systemSchema = z.object({ project_id: z.string(), remote_control: z.boolean() });
 export type SystemInfo = z.infer<typeof systemSchema>;
 
+export const resourceSnapshotSchema = z.object({ cpu_count: z.number(), load_average: z.number().nullable(), memory_total_bytes: z.number().nullable(), memory_available_bytes: z.number().nullable() });
+export const workerCapabilitiesSchema = z.object({ platform: z.string(), architecture: z.string(), agentgraph_version: z.string(), features: z.array(z.string()), resources: resourceSnapshotSchema });
+export const nodeSchema = z.object({ node_id: z.string(), name: z.string(), role: z.enum(["core", "worker"]), status: z.enum(["registered", "online", "offline", "disabled"]), enabled: z.boolean(), capabilities: workerCapabilitiesSchema, created_at: z.string(), updated_at: z.string(), last_seen_at: z.string().nullable() });
+export const probeResultSchema = z.object({ task_id: z.string(), node_id: z.string(), status: z.literal("succeeded"), result: z.record(z.unknown()) });
+export type NodeInfo = z.infer<typeof nodeSchema>;
+export type ProbeResult = z.infer<typeof probeResultSchema>;
+
 export const projectSchema = z.object({ project_id: z.string(), name: z.string() });
 export type Project = z.infer<typeof projectSchema>;
 
