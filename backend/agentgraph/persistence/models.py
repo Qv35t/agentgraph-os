@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from enum import Enum as PythonEnum
 from uuid import uuid4
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -114,3 +114,49 @@ class VisionFolderRecord(Base):
     root: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     enabled: Mapped[bool] = mapped_column(nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
+class MemoryRecordRecord(Base):
+    __tablename__ = "memory_records"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    project_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    agent_id: Mapped[str] = mapped_column(ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class RunMemoryRecord(Base):
+    __tablename__ = "run_memory_records"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"), nullable=False, index=True)
+    memory_id: Mapped[str | None] = mapped_column(
+        ForeignKey("memory_records.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    memory_id_snapshot: Mapped[str] = mapped_column(String(36), nullable=False)
+    rank: Mapped[int] = mapped_column(Integer, nullable=False)
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class ToolInvocationRecord(Base):
+    __tablename__ = "tool_invocations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"), nullable=False, index=True)
+    tool_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    risk: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[str] = mapped_column(String(30), nullable=False)
+    approval_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    input_metadata: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False, default=dict)
+    output_metadata: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)

@@ -20,7 +20,12 @@ export const graphNodeSchema = z.object({
   position: z.tuple([z.number(), z.number()]),
 });
 export const graphEdgeSchema = z.object({ id: z.string(), source: z.string(), target: z.string() });
-export const graphSchema = z.object({ nodes: z.array(graphNodeSchema), edges: z.array(graphEdgeSchema) });
+export const graphSchema = z.object({
+  version: z.literal(1).optional(),
+  runtime: z.enum(["model-v1", "lexi-v1"]).optional(),
+  nodes: z.array(graphNodeSchema),
+  edges: z.array(graphEdgeSchema),
+});
 export type GraphDefinition = z.infer<typeof graphSchema>;
 
 export const agentSchema = z.object({
@@ -101,3 +106,36 @@ export const visionFolderSchema = z.object({ id: z.string(), display_name: z.str
 export type VisionAsset = z.infer<typeof visionAssetSchema>;
 export type VisionAnalysis = z.infer<typeof visionAnalysisSchema>;
 export type VisionFolder = z.infer<typeof visionFolderSchema>;
+
+export const lexiSchema = z.object({ installed: z.boolean(), agent: agentSchema.nullable() });
+export type Lexi = z.infer<typeof lexiSchema>;
+
+export const memoryKindSchema = z.enum(["fact", "preference", "note", "summary"]);
+export type MemoryKind = z.infer<typeof memoryKindSchema>;
+export const memorySchema = z.object({
+  id: z.string(),
+  project_id: z.string(),
+  agent_id: z.string(),
+  kind: memoryKindSchema,
+  content: z.string(),
+  tags: z.array(z.string()),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export type Memory = z.infer<typeof memorySchema>;
+
+export const memoryUsageSchema = z.object({ memory_id: z.string(), rank: z.number(), score: z.number().nullable(), deleted: z.boolean() });
+export type MemoryUsage = z.infer<typeof memoryUsageSchema>;
+
+export const toolInvocationSchema = z.object({
+  id: z.string(),
+  tool_id: z.string(),
+  risk: z.string(),
+  status: z.string(),
+  approval_id: z.string().nullable(),
+  error_code: z.string().nullable(),
+  started_at: z.string().nullable(),
+  finished_at: z.string().nullable(),
+  duration_ms: z.number().nullable(),
+});
+export type ToolInvocation = z.infer<typeof toolInvocationSchema>;

@@ -1,9 +1,9 @@
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { addEdge, applyEdgeChanges, applyNodeChanges, Background, Controls, ReactFlow, type Connection, type Edge, type EdgeChange, type Node, type NodeChange, useEdgesState, useNodesState } from "@xyflow/react";
-import { AlertTriangle, ArrowRight, Check, CircleStop, FolderKanban, Play, Plus, RefreshCw, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Check, CircleStop, ExternalLink, FolderKanban, Play, Plus, RefreshCw, Trash2, Wrench, X } from "lucide-react";
 import { api, ApiError } from "./api";
-import type { Agent, Approval, GraphDefinition, Provider, RuntimeEvent, SystemInfo, VisionAnalysis, VisionAsset, VisionFolder } from "./contracts";
+import type { Agent, Approval, GraphDefinition, MemoryKind, Provider, Run, RuntimeEvent, SystemInfo, VisionAnalysis, VisionAsset, VisionFolder } from "./contracts";
 import type { AppState } from "./App";
 import { useLanguage } from "./i18n";
 
@@ -105,7 +105,7 @@ function AgentComposer({ onCreated }: { onCreated: () => void }) {
 function GraphEditor({ value, onChange }: { value: GraphDefinition; onChange: (graph: GraphDefinition) => void }) {
   const seedNodes: Node[] = value.nodes.length ? value.nodes.map((node) => ({ id: node.id, type: node.type, position: { x: node.position[0], y: node.position[1] }, data: { label: node.label } })) : [{ id: "agent", position: { x: 80, y: 70 }, data: { label: "Agent" } }];
   const [nodes, setNodes] = useNodesState(seedNodes); const [edges, setEdges] = useEdgesState(value.edges);
-  const sync = useCallback((nextNodes: Node[], nextEdges: Edge[]) => onChange({ nodes: nextNodes.map((node) => ({ id: node.id, type: node.type ?? "agent", label: String(node.data.label ?? node.id), position: [node.position.x, node.position.y] })), edges: nextEdges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target })) }), [onChange]);
+  const sync = useCallback((nextNodes: Node[], nextEdges: Edge[]) => onChange({ version: value.version, runtime: value.runtime, nodes: nextNodes.map((node) => ({ id: node.id, type: node.type ?? "agent", label: String(node.data.label ?? node.id), position: [node.position.x, node.position.y] })), edges: nextEdges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target })) }), [onChange, value.runtime, value.version]);
   const onConnect = useCallback((connection: Connection) => setEdges((current) => { const next = addEdge(connection, current); sync(nodes, next); return next; }), [nodes, setEdges, sync]);
   const onNodeChanges = useCallback((changes: NodeChange[]) => setNodes((current) => { const next = applyNodeChanges(changes, current); sync(next, edges); return next; }), [edges, setNodes, sync]);
   const onEdgeChanges = useCallback((changes: EdgeChange[]) => setEdges((current) => { const next = applyEdgeChanges(changes, current); sync(nodes, next); return next; }), [nodes, setEdges, sync]);
@@ -158,4 +158,142 @@ export function VisionPage({ state }: { state: AppState }) {
   async function analyze() { if (!asset) return; setBusy(true); setError(null); try { await api.analyzeVisionAsset(asset.id, { mode, prompt: mode === "custom" ? prompt : null, model: null }); analyses.refresh(); } catch (reason) { setError(reason instanceof ApiError ? reason : new ApiError("VISION_ANALYSIS_FAILED", "Could not start analysis.")); } finally { setBusy(false); } }
   async function registerFolder(event: FormEvent) { event.preventDefault(); setBusy(true); try { await api.registerVisionFolder({ display_name: folderName, root: folderRoot }); folders.refresh(); setFolderName(""); setFolderRoot(""); } catch (reason) { setError(reason instanceof ApiError ? reason : new ApiError("VISION_FOLDER_FAILED", "Could not register folder.")); } finally { setBusy(false); } }
   return <Page eyebrow="LOCAL MULTIMODAL" title="Vision workspace">{error && <div className="banner error">{error.code}: {error.message}</div>}<div className="detail-grid"><section><Panel title="Upload and analyze"><div className="vision-upload"><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />{file && <p><b>{file.name}</b> <span className="muted">{Math.round(file.size / 1024)} KB</span></p>}<button onClick={upload} disabled={!file || busy}>Upload image</button>{asset && <><dl className="metadata"><dt>Asset</dt><dd><code>{asset.id}</code></dd><dt>Format</dt><dd>{asset.mime_type}</dd></dl><label>Mode<select value={mode} onChange={(event) => setMode(event.target.value)}>{["describe", "detailed", "ocr", "objects", "grounding", "ui", "custom"].map((value) => <option key={value}>{value}</option>)}</select></label>{mode === "custom" && <label>Prompt<textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} /></label>}<p className="muted">Compatible models: {visionModels.length || "no vision-capable provider currently available"}</p><button onClick={analyze} disabled={busy || !visionModels.length}>Analyze</button></>}</div></Panel><Panel title="Analysis history"><Resource result={analyses}>{(items: VisionAnalysis[]) => items.length ? <div className="run-list">{items.map((item) => <div key={item.id}><Status value={item.status} /><span>{item.mode} / {item.model_id}</span><p>{item.description ?? item.ocr_text ?? item.raw_text ?? "Awaiting local model."}</p>{item.error_code && <p className="form-error">{item.error_code}</p>}</div>)}</div> : <Empty>No vision analyses yet.</Empty>}</Resource></Panel></section><section><Panel title="Stored assets"><Resource result={assets}>{(items: VisionAsset[]) => items.length ? <div className="run-list">{items.map((item) => <button className="secondary" key={item.id} onClick={() => setAsset(item)}><span>{item.filename}</span><code>{item.mime_type}</code></button>)}</div> : <Empty>No uploaded images.</Empty>}</Resource></Panel><Panel title="Registered folders"><form className="run-form" onSubmit={registerFolder}><label>Name<input required value={folderName} onChange={(event) => setFolderName(event.target.value)} /></label><label>Allowed local folder<input required value={folderRoot} onChange={(event) => setFolderRoot(event.target.value)} /></label><button disabled={busy}>Register folder</button></form><Resource result={folders}>{(items: VisionFolder[]) => <div className="run-list">{items.map((item) => <div key={item.id}><span>{item.display_name}</span><button className="secondary" onClick={() => api.scanVisionFolder(item.id).then(assets.refresh).catch((reason: unknown) => setError(reason as ApiError))}>Scan</button></div>)}</div>}</Resource></Panel></section></div><p className="muted">Vision observes images only. It never clicks, types, or controls the computer. Folder paths are accepted only when they resolve under server-configured allowed roots.</p></Page>;
+}
+
+export function LexiPage({ state }: { state: AppState }) {
+  const { text } = useLanguage();
+  const t = text.lexi;
+  const lexi = useResource(api.lexi);
+  const agent = lexi.data?.agent ?? null;
+  const agentId = agent?.id;
+  const providers = useResource(api.providers);
+  const runs = useResource(() => agentId ? api.agentRuns(agentId) : Promise.resolve<Run[]>([]), [agentId, state.events.length]);
+  const memory = useResource(() => agentId ? api.memory(agentId) : Promise.resolve([]), [agentId]);
+  const [selectedRun, setSelectedRun] = useState<Run | null>(null);
+  const selectedRunId = selectedRun?.id ?? null;
+  const runDetail = useResource(() => selectedRunId ? api.run(selectedRunId) : Promise.resolve<Run | null>(null), [selectedRunId]);
+  const runMemory = useResource(() => selectedRunId ? api.runMemory(selectedRunId) : Promise.resolve([]), [selectedRunId]);
+  const tools = useResource(() => selectedRunId ? api.runTools(selectedRunId) : Promise.resolve([]), [selectedRunId]);
+  const approvals = useResource(api.approvals, [selectedRunId, state.events.length]);
+  const [task, setTask] = useState("");
+  const [memoryKind, setMemoryKind] = useState<MemoryKind>("fact");
+  const [memoryContent, setMemoryContent] = useState("");
+  const [memoryTags, setMemoryTags] = useState("");
+  const [bootstrapping, setBootstrapping] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [savingMemory, setSavingMemory] = useState(false);
+  const [deletingMemoryId, setDeletingMemoryId] = useState<string | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
+  const currentRun = runDetail.data ?? selectedRun;
+  const currentRunStatus = currentRun?.status;
+  const refreshRunDetail = runDetail.refresh;
+  const refreshRunMemory = runMemory.refresh;
+  const refreshTools = tools.refresh;
+  const refreshApprovals = approvals.refresh;
+  const matchingEventCount = selectedRunId ? state.events.filter((event) => event.run_id === selectedRunId).length : 0;
+  const pendingApprovals = approvals.data?.filter((approval) => approval.run_id === selectedRunId) ?? [];
+
+  useEffect(() => {
+    if (!currentRunStatus || !["queued", "running"].includes(currentRunStatus)) return;
+    const poll = window.setInterval(() => {
+      refreshRunDetail();
+      refreshTools();
+      refreshRunMemory();
+      refreshApprovals();
+    }, 3_000);
+    return () => window.clearInterval(poll);
+  }, [currentRunStatus, refreshApprovals, refreshRunDetail, refreshRunMemory, refreshTools]);
+
+  useEffect(() => {
+    if (!matchingEventCount) return;
+    refreshRunDetail();
+    refreshTools();
+    refreshRunMemory();
+    refreshApprovals();
+  }, [matchingEventCount, refreshApprovals, refreshRunDetail, refreshRunMemory, refreshTools]);
+
+  async function bootstrap() {
+    setBootstrapping(true);
+    setError(null);
+    try {
+      await api.bootstrapLexi();
+      lexi.refresh();
+    } catch (reason) {
+      setError(reason instanceof ApiError ? reason : new ApiError("LEXI_BOOTSTRAP_FAILED", t.error));
+    } finally {
+      setBootstrapping(false);
+    }
+  }
+
+  async function start(event: FormEvent) {
+    event.preventDefault();
+    if (!agent) return;
+    setStarting(true);
+    setError(null);
+    try {
+      const run = await api.startRun(agent.id, task);
+      setSelectedRun(run);
+      setTask("");
+      runs.refresh();
+    } catch (reason) {
+      setError(reason instanceof ApiError ? reason : new ApiError("LEXI_RUN_FAILED", t.error));
+    } finally {
+      setStarting(false);
+    }
+  }
+
+  async function cancel() {
+    if (!selectedRunId) return;
+    setCancelling(true);
+    setError(null);
+    try {
+      // The returned lifecycle record is the only cancellation state applied to the UI.
+      const stopped = await api.stopRun(selectedRunId);
+      setSelectedRun(stopped);
+      runs.refresh();
+      refreshRunDetail();
+    } catch (reason) {
+      setError(reason instanceof ApiError ? reason : new ApiError("LEXI_CANCEL_FAILED", t.error));
+    } finally {
+      setCancelling(false);
+    }
+  }
+
+  async function addMemory(event: FormEvent) {
+    event.preventDefault();
+    if (!agent) return;
+    setSavingMemory(true);
+    setError(null);
+    try {
+      await api.createMemory({ agent_id: agent.id, kind: memoryKind, content: memoryContent, tags: memoryTags.split(",").map((tag) => tag.trim()).filter(Boolean) });
+      setMemoryContent("");
+      setMemoryTags("");
+      memory.refresh();
+    } catch (reason) {
+      setError(reason instanceof ApiError ? reason : new ApiError("MEMORY_CREATE_FAILED", t.error));
+    } finally {
+      setSavingMemory(false);
+    }
+  }
+
+  async function removeMemory(memoryId: string) {
+    if (!agent) return;
+    setDeletingMemoryId(memoryId);
+    setError(null);
+    try {
+      await api.deleteMemory(memoryId, agent.id);
+      memory.refresh();
+    } catch (reason) {
+      setError(reason instanceof ApiError ? reason : new ApiError("MEMORY_DELETE_FAILED", t.error));
+    } finally {
+      setDeletingMemoryId(null);
+    }
+  }
+
+  if (lexi.loading) return <section className="page"><div className="state"><RefreshCw className="spin" /> {t.loading}</div></section>;
+  if (lexi.error) return <section className="page"><div className="state error"><AlertTriangle /><div><b>{t.error}</b><p>{lexi.error.message}</p></div><button onClick={lexi.refresh}>{t.retry}</button></div></section>;
+  if (!lexi.data?.installed || !agent) return <section className="page lexi-page"><div className="page-heading"><div><span className="eyebrow">{t.eyebrow}</span><h2>{t.title}</h2></div></div>{error && <div className="banner error">{error.code}: {error.message}</div>}<section className="panel lexi-bootstrap"><header><h3>{t.bootstrapTitle}</h3></header><p>{t.bootstrapDescription}</p><button onClick={bootstrap} disabled={bootstrapping}><Play size={16} /> {bootstrapping ? t.bootstrapping : t.bootstrap}</button></section></section>;
+
+  return <section className="page lexi-page"><div className="page-heading"><div><span className="eyebrow">{t.eyebrow}</span><h2>{t.title}</h2></div><Status value={agent.status} /></div>{error && <div className="banner error">{error.code}: {error.message}</div>}<p className="lexi-installed">{t.installed}</p><div className="lexi-grid"><section><Panel title={t.composer}><form className="run-form" onSubmit={start}><label>{t.task}<textarea required value={task} onChange={(event) => setTask(event.target.value)} placeholder={t.taskPlaceholder} /></label><div><span>{t.provider} <code>{agent.model_ref}</code></span><button disabled={starting || ["queued", "running"].includes(currentRunStatus ?? "") || !task.trim()}><Play size={16} /> {starting ? t.starting : t.start}</button></div></form></Panel><Panel title={t.output}>{currentRun ? <div className="output lexi-output"><div className="lexi-run-heading"><span>{t.selectedRun}</span><Status value={currentRun.status} /><Link className="text-link" to={`/runs/${currentRun.id}`}>{t.fullRun} <ExternalLink size={14} /></Link></div>{["queued", "running"].includes(currentRun.status) && <button className="danger" onClick={cancel} disabled={cancelling}><CircleStop size={16} /> {cancelling ? t.cancelling : t.cancel}</button>}{cancelling && <p className="muted">{t.cancelPending}</p>}{currentRun.output_text ? <pre>{currentRun.output_text}</pre> : <p className="muted">{currentRun.error ?? t.noOutput}</p>}</div> : <Empty>{t.noRuns}</Empty>}</Panel><Panel title={t.recentRuns}><Resource result={runs}>{(items) => items.length ? <div className="run-list lexi-runs">{items.map((run) => <button className="secondary" key={run.id} onClick={() => setSelectedRun(run)}><Status value={run.status} /><span>{run.input_text}</span><code>{short(run.id)}</code></button>)}</div> : <Empty>{t.noRuns}</Empty>}</Resource></Panel></section><section><Panel title={t.providers}><div className="lexi-provider"><span>{t.provider}</span><code>{agent.model_ref}</code></div>{providers.data?.filter((provider) => provider.available).length ? <div className="capabilities">{providers.data.filter((provider) => provider.available).map((provider) => provider.provider_id).join(" / ")}</div> : <p className="muted">{t.noProviders}</p>}</Panel><Panel title={t.memory}><form className="lexi-memory-form" onSubmit={addMemory}><label>{t.memoryKind}<select value={memoryKind} onChange={(event) => setMemoryKind(event.target.value as MemoryKind)}>{(["fact", "preference", "note", "summary"] as const).map((kind) => <option value={kind} key={kind}>{t.kinds[kind]}</option>)}</select></label><label>{t.memoryContent}<textarea required value={memoryContent} onChange={(event) => setMemoryContent(event.target.value)} /></label><label>{t.memoryTags}<input value={memoryTags} onChange={(event) => setMemoryTags(event.target.value)} placeholder={t.memoryTagsPlaceholder} /></label><button disabled={savingMemory || !memoryContent.trim()}><Plus size={16} /> {savingMemory ? t.addingMemory : t.addMemory}</button></form><Resource result={memory}>{(items) => items.length ? <div className="lexi-memory-list">{items.map((item) => <article key={item.id}><div><Status value={item.kind} /><p>{item.content}</p>{item.tags.length > 0 && <span className="capabilities">{item.tags.join(" / ")}</span>}</div><button className="danger" onClick={() => removeMemory(item.id)} disabled={deletingMemoryId === item.id} aria-label={t.deleteMemory}><Trash2 size={15} /> {deletingMemoryId === item.id ? t.deletingMemory : t.deleteMemory}</button></article>)}</div> : <Empty>{t.memoryEmpty}</Empty>}</Resource></Panel></section></div>{currentRun && <div className="lexi-grid lexi-activity"><Panel title={t.injectedMemory}><Resource result={runMemory}>{(items) => items.length ? <div className="lexi-activity-list">{items.map((item) => <div key={item.memory_id}><code>{short(item.memory_id)}</code><span>#{item.rank}</span>{item.score !== null && <span>{item.score}</span>}{item.deleted && <Status value={t.deletedMemory} />}</div>)}</div> : <Empty>{t.noInjectedMemory}</Empty>}</Resource></Panel><Panel title={t.toolActivity}><Resource result={tools}>{(items) => items.length ? <div className="lexi-activity-list">{items.map((tool) => <div key={tool.id}><Wrench size={15} /><code>{tool.tool_id}</code><Status value={tool.status} />{tool.duration_ms !== null && <span>{tool.duration_ms} {t.milliseconds}</span>}{tool.error_code && <span className="form-error">{tool.error_code}</span>}</div>)}</div> : <Empty>{t.noTools}</Empty>}</Resource>{pendingApprovals.length > 0 && <div className="lexi-approval"><AlertTriangle size={16} /><span>{pendingApprovals.length === 1 ? t.pendingApproval : t.pendingApprovals}</span><Link className="text-link" to="/approvals">{t.openApprovals} <ArrowRight size={14} /></Link></div>}</Panel></div>}</section>;
 }

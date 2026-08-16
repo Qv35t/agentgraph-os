@@ -31,3 +31,15 @@ class Settings(BaseSettings):
     vision_max_image_pixels: int = Field(default=40_000_000, gt=0, le=100_000_000)
     vision_max_queue: int = Field(default=10, gt=0, le=100)
     vision_max_scan_files: int = Field(default=1_000, gt=0, le=10_000)
+    memory_enabled: bool = True
+    memory_max_content_chars: int = Field(default=10_000, gt=0, le=100_000)
+    memory_max_tags: int = Field(default=16, gt=0, le=100)
+    memory_max_tag_chars: int = Field(default=64, gt=0, le=200)
+    memory_max_results: int = Field(default=8, gt=0, le=50)
+    memory_max_context_chars: int = Field(default=6_000, gt=0, le=100_000)
+    tools_enabled: bool = False
+    tool_approval_timeout_seconds: float = Field(default=120, gt=0, le=3600)
+    tool_execution_timeout_seconds: float = Field(default=30, gt=0, le=300)
+    tool_max_output_chars: int = Field(default=4_000, gt=0, le=20_000)
+    tool_application_allowlist_json: str = "{}"
+    lexi_max_tool_steps: int = Field(default=3, gt=0, le=10)

@@ -1,6 +1,6 @@
 # AgentGraph OS — Memory Design
 
-Status: design target for Phase 5; no Phase 2/3 code should depend on this document as implemented behavior.
+Status: SQLite Memory MVP implemented in Phase 6. Qdrant and Mem0 remain future adapters.
 
 ## Goal
 
@@ -23,6 +23,20 @@ Memory adapter(s)
 ```
 
 Qdrant and Mem0 are adapters, not application-wide domain types.
+
+## Current implementation
+
+- `MemoryService` persists records locally in SQLite through SQLAlchemy/Alembic.
+- Every record is scoped by `project_id` and `agent_id`; retrieval never has an
+  unscoped path.
+- The initial retrieval adapter is deterministic bounded lexical matching, not
+  semantic/vector search. It applies configured result and context-size limits.
+- Lexi records the injected memory IDs, rank, and lexical score in a normalized
+  run-memory link table. Prompts are not persisted for this purpose.
+- Delete is a local soft-forget operation: deleted records cannot be listed or
+  retrieved in later runs while existing run links remain inspectable.
+- Retrieved records are wrapped as untrusted context and cannot grant tool or
+  permission policy.
 
 ## Scope rules
 

@@ -46,4 +46,8 @@ Do not:
 
 ## Tool security
 
-Future tools require typed input, allowlist/policy, timeouts, cancellation, bounded output, audit metadata, and per-tool security review. Shell access is not the default tool model.
+Phase 6 tools require typed input, allowlist/policy, timeouts, cancellation,
+bounded output, audit metadata, and per-tool security review. The current
+registry is disabled by default and contains `system.current_time` plus the
+approval-gated, allowlisted `desktop.open_application`; shell access does not
+exist.

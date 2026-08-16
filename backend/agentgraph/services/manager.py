@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 from datetime import UTC, datetime
 from typing import Protocol
 from uuid import UUID
@@ -21,12 +22,13 @@ from agentgraph.persistence.models import AgentRecord, AgentRunRecord
 from agentgraph.repositories.agents import AgentRepository
 from agentgraph.repositories.runs import RunRepository
 from agentgraph.runtime.events import RuntimeEventBus
+from agentgraph.runtime.execution import AgentExecutionRequest
 from agentgraph.runtime.registry import RunRegistry
 from agentgraph.services.errors import AgentNotFoundError, LifecycleConflictError, RunNotFoundError
 
 
 class AgentRuntime(Protocol):
-    async def invoke(self, *, agent_id: UUID, run_id: UUID, input_text: str, model_ref: str) -> ModelResponse: ...
+    async def invoke(self, execution: AgentExecutionRequest) -> ModelResponse: ...
 
 
 class AgentManager:
@@ -191,12 +193,14 @@ class AgentManager:
             if self._runtime_delay_seconds:
                 await asyncio.sleep(self._runtime_delay_seconds)
             agent = await self.get_agent(run.agent_id)
-            response = await self._runtime.invoke(
+            execution = AgentExecutionRequest(
                 agent_id=run.agent_id,
                 run_id=run.id,
                 input_text=run.input_text,
                 model_ref=agent.model_ref,
+                graph_definition=agent.graph_definition,
             )
+            response = await self._invoke_runtime(execution)
         except asyncio.CancelledError:
             await self._finish_cancelled(run_id)
             raise
@@ -294,6 +298,17 @@ class AgentManager:
 
     def _lock_for(self, agent_id: UUID) -> asyncio.Lock:
         return self._agent_locks.setdefault(agent_id, asyncio.Lock())
+
+    async def _invoke_runtime(self, execution: AgentExecutionRequest) -> ModelResponse:
+        if "execution" in inspect.signature(self._runtime.invoke).parameters:
+            return await self._runtime.invoke(execution)
+        # Preserve the Phase 2 runtime protocol for existing in-process extensions.
+        return await self._runtime.invoke(  # type: ignore[call-arg]
+            agent_id=execution.agent_id,
+            run_id=execution.run_id,
+            input_text=execution.input_text,
+            model_ref=execution.model_ref,
+        )
 
     async def _publish(
         self,

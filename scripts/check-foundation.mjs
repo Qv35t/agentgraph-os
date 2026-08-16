@@ -90,7 +90,7 @@ try {
   failures.push("Invalid JSON: opencode.json");
 }
 
-if (!["node scripts/check-phase3.mjs", "node scripts/check-phase4.mjs", "node scripts/check-phase5.mjs"].includes(packageConfig?.scripts?.check)) {
+if (!["node scripts/check-phase3.mjs", "node scripts/check-phase4.mjs", "node scripts/check-phase5.mjs", "node scripts/check-phase6.mjs"].includes(packageConfig?.scripts?.check)) {
   failures.push("package.json must run a supported project check through pnpm check");
 }
 

@@ -123,7 +123,9 @@ Deliver direction:
 
 ## Phase 6 — Lexi Integration
 
-**Status:** PLANNED.
+**Status:** DONE. Lexi workflow, Memory MVP, controlled Tool MVP, browser
+workspace, automated verification, local Ollama smoke, and owner manual
+acceptance are complete.
 
 Goal: integrate Lexi as the first real end-to-end assistant/workflow on top of AgentGraph OS boundaries.
 
@@ -131,7 +133,7 @@ Deliver direction:
 
 - Lexi agent/workflow definition;
 - model routing through AgentGraph contracts;
-- memory integration where approved;
+- durable scoped SQLite Memory MVP;
 - controlled Linux/assistant tool boundary rather than arbitrary shell;
 - observable runs and cancellation;
 - frontend representation of the Lexi workflow;

@@ -1,5 +1,6 @@
 # ruff: noqa: E501
 
+import asyncio
 import json
 from datetime import datetime
 from uuid import UUID, uuid4
@@ -95,6 +96,7 @@ class ApprovalService:
 
     def __init__(self, events: RuntimeEventBus | None = None) -> None:
         self._requests: dict[str, ApprovalRequest] = {}
+        self._decisions: dict[str, asyncio.Future[ApprovalStatus]] = {}
         self._events = events
 
     async def create(
@@ -119,6 +121,7 @@ class ApprovalService:
             expires_at=expires_at,
         )
         self._requests[approval.id] = approval
+        self._decisions[approval.id] = asyncio.get_running_loop().create_future()
         await self._publish(approval, RuntimeEventType.APPROVAL_REQUIRED)
         return approval
 
@@ -133,11 +136,40 @@ class ApprovalService:
             await self._publish(approval, RuntimeEventType.APPROVAL_EXPIRED)
             raise LifecycleConflictError("Approval has expired")
         approval.status = ApprovalStatus.APPROVED if approved else ApprovalStatus.REJECTED
+        decision = self._decisions.get(approval.id)
+        if decision is not None and not decision.done():
+            decision.set_result(approval.status)
         await self._publish(
             approval,
             RuntimeEventType.APPROVAL_APPROVED if approved else RuntimeEventType.APPROVAL_REJECTED,
         )
         return approval
+
+    async def wait_for_decision(self, approval_id: str, timeout_seconds: float) -> str:
+        approval = self._requests.get(approval_id)
+        decision = self._decisions.get(approval_id)
+        if approval is None or decision is None:
+            return "cancelled"
+        try:
+            status = await asyncio.wait_for(asyncio.shield(decision), timeout_seconds)
+        except TimeoutError:
+            if approval.status is ApprovalStatus.PENDING:
+                approval.status = ApprovalStatus.EXPIRED
+                await self._publish(approval, RuntimeEventType.APPROVAL_EXPIRED)
+            return "expired"
+        except asyncio.CancelledError:
+            await self.cancel(approval_id)
+            raise
+        return status.value
+
+    async def cancel(self, approval_id: str) -> None:
+        approval = self._requests.get(approval_id)
+        if approval is None or approval.status is not ApprovalStatus.PENDING:
+            return
+        approval.status = ApprovalStatus.CANCELLED
+        decision = self._decisions.get(approval.id)
+        if decision is not None and not decision.done():
+            decision.set_result(approval.status)
 
     def list_pending(self, project_id: str | None = None) -> list[ApprovalRequest]:
         return [

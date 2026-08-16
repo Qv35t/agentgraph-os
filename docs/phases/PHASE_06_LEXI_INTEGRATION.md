@@ -8,7 +8,7 @@ Use Lexi as the first end-to-end assistant/workflow proving that AgentGraph OS c
 
 - Lexi represented as an AgentGraph agent/workflow rather than a parallel runtime;
 - model selection through ModelRouter;
-- memory through Phase 5 contracts;
+- durable, scoped Memory MVP introduced in Phase 6;
 - visible run status/history in AgentGraph UI;
 - controlled, typed assistant/tool operations;
 - cancellation/timeouts and clear failures;
@@ -24,3 +24,10 @@ Do not solve Lexi PC control by exposing a generic unrestricted shell tool to th
 A representative Lexi workflow can be launched/observed from AgentGraph OS, use a configured local model path, access scoped memory, invoke at least one approved controlled assistant capability, and complete/cancel truthfully.
 
 Exact voice/desktop capabilities should be mapped from the current Lexi project at Phase 6 start rather than guessed now.
+
+## Current implementation status
+
+The backend workflow, SQLite memory MVP, controlled tools MVP, and `/lexi`
+browser workspace are implemented. Automated verification passed on 2026-08-15,
+the local Ollama smoke passed with `qwen3-4b-nothink:latest`, and owner manual
+browser acceptance is confirmed complete. Phase 5 is Vision, not Memory.

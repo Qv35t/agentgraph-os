@@ -1,11 +1,11 @@
 # AgentGraph OS — Project Status
 
-Last updated: **2026-08-12**
+Last updated: **2026-08-15**
 
 ## Current phase
 
-**Phase 5 - Multimodal Vision Layer is complete. Phase 6 remains planned and has
-not started.**
+**Phase 6 - Lexi Integration is complete. Automated verification, the local
+model smoke, and owner manual acceptance have passed.**
 
 The Remote Interface Foundation is implemented as a Phase 3 compatibility
 extension: normalized events/commands, versioned REST and WebSocket transport,
@@ -29,7 +29,7 @@ verification.
 | 3 — Model Router & Providers | DONE | Router, three adapters, LLM graph, metadata, provider API, remote-interface foundation, tests, and live Ollama verified |
 | 4 — Visual Interface | DONE | Browser UI, versioned API client, visual graph persistence, live events, manual browser acceptance, and automated checks verified |
 | 5 — Multimodal Vision Layer | DONE | Local multimodal contracts, persisted assets/analyses, secure folder boundary, Vision UI, automated checks, and owner-confirmed manual acceptance complete |
-| 6 — Lexi Integration | PLANNED | Requires preceding relevant gates |
+| 6 — Lexi Integration | DONE | Lexi workflow, scoped memory, controlled tools, `/lexi` UI, automated checks, live Ollama smoke, and owner manual acceptance complete |
 
 ## Verified repository facts before this documentation pack
 
@@ -42,8 +42,7 @@ At documentation preparation time, the public repository already contained:
 
 ## Next action
 
-Phase 6 may begin only after explicit owner instruction and Phase 6 repository
-inspection. Phase 5 acceptance is complete.
+The current numbered MVP phases are complete. Future work belongs to post-MVP tracks.
 
 ```text
 /phase-4

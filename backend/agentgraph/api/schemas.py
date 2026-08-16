@@ -1,10 +1,11 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from agentgraph.domain.entities import Agent, AgentRun, AgentStatus, RunStatus
+from agentgraph.domain.memory import MemoryKind, MemoryMatch, MemoryRecord
 from agentgraph.domain.vision import VisionAnalysisStatus, VisionMode
 from agentgraph.models.contracts import (
     ModelErrorCode,
@@ -22,6 +23,8 @@ class GraphDefinition(BaseModel):
     """Persisted visual graph semantics; runtime behavior remains intentionally fixed."""
 
     model_config = ConfigDict(extra="forbid")
+    version: int | None = Field(default=None, ge=1, le=1)
+    runtime: Literal["model-v1", "lexi-v1"] | None = None
     nodes: list["GraphNode"] = Field(default_factory=list, max_length=100)
     edges: list["GraphEdge"] = Field(default_factory=list, max_length=200)
 
@@ -218,3 +221,61 @@ class VisionFolderResponse(BaseModel):
     display_name: str
     enabled: bool
     created_at: datetime
+
+
+class CreateMemoryRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    agent_id: UUID
+    kind: MemoryKind
+    content: str = Field(min_length=1, max_length=100_000)
+    tags: list[str] = Field(default_factory=list, max_length=100)
+
+
+class MemorySearchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    agent_id: UUID
+    query: str = Field(default="", max_length=100_000)
+
+
+class MemoryResponse(BaseModel):
+    id: UUID
+    project_id: str
+    agent_id: UUID
+    kind: MemoryKind
+    content: str
+    tags: list[str]
+    created_at: datetime
+    updated_at: datetime
+
+    @classmethod
+    def from_domain(cls, record: MemoryRecord) -> "MemoryResponse":
+        return cls(
+            id=record.id,
+            project_id=record.project_id,
+            agent_id=record.agent_id,
+            kind=record.kind,
+            content=record.content,
+            tags=list(record.tags),
+            created_at=record.created_at,
+            updated_at=record.updated_at,
+        )
+
+
+class MemorySearchResponse(MemoryResponse):
+    rank: int
+    score: float | None
+
+    @classmethod
+    def from_match(cls, match: MemoryMatch) -> "MemorySearchResponse":
+        return cls(**MemoryResponse.from_domain(match.record).model_dump(), rank=match.rank, score=match.score)
+
+
+class LexiResponse(BaseModel):
+    installed: bool
+    agent: AgentResponse | None
+
+    @classmethod
+    def from_agent(cls, agent: Agent | None) -> "LexiResponse":
+        return cls(installed=agent is not None, agent=AgentResponse.from_domain(agent) if agent else None)

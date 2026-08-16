@@ -28,9 +28,9 @@ AgentGraph OS starts as a **local-first modular monolith** with clear internal b
 │        │                  ├─ OpenCode local bridge         │
 │        │                  └─ OpenAI-compatible provider    │
 │        │                                                    │
-│        ├────────► Memory abstraction (Phase 5)              │
+│        ├────────► MemoryService (SQLite Phase 6 MVP)        │
 │        │                                                    │
-│        └────────► Controlled tools (later / Phase 6 path)   │
+│        └────────► ToolService / ApprovalService             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -150,7 +150,23 @@ fail-closed registered-folder boundary. Vision remains provider-agnostic and
 observation-only; see `docs/architecture/VISION.md`. Memory remains a future
 local-first extension and does not share Vision storage implicitly.
 
-### 3.9 Tools and automation
+### 3.9 Lexi, memory, and tools
+
+Phase 6 adds Lexi as an ordinary AgentGraph agent with allowlisted
+`runtime: "lexi-v1"` metadata. AgentManager remains lifecycle authority while
+the Lexi LangGraph calls MemoryService, ModelRouter, and ToolService. The
+browser `/lexi` workspace calls normal versioned AgentGraph run APIs and only
+observes events; it does not own orchestration. See `docs/architecture/LEXI.md`.
+
+Memory is persisted in SQLite and scoped by project and agent. Retrieval is
+bounded lexical matching, not semantic/vector search. It is explicit to create
+and can be deleted through the versioned API.
+
+ToolService contains only registered, typed tools. It is disabled by default;
+the only control action resolves a configured application alias to a server-owned
+argument vector, requires approval, and never invokes a shell.
+
+### 3.10 Tools and automation
 
 Model text does not execute tools implicitly. Tool invocation requires typed definitions, allowlists/policy, explicit runtime handling, observable input/output, cancellation, timeouts, and security review.
 

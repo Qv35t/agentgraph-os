@@ -1,6 +1,7 @@
 # AgentGraph OS — Tools & Automation Design
 
-Status: controlled-capability design direction; broad tool runtime is not part of Phase 2 or Phase 3.
+Status: controlled Tool Runtime MVP implemented in Phase 6. Broad automation is
+still out of scope.
 
 ## Principle
 
@@ -35,6 +36,22 @@ Every tool requires:
 Prefer narrow capabilities (for example, open an allowlisted application) over a generic unrestricted terminal executor.
 
 A general shell tool is **not** approved by this design. Adding one requires a separate ADR/threat model and explicit owner decision.
+
+## Current implementation
+
+- `ToolService` registers only `system.current_time` and
+  `desktop.open_application`.
+- Tools are disabled by default. `desktop.open_application` accepts only an
+  application alias resolved by the user-configured JSON argument-vector
+  allowlist; model text never supplies executables, flags, environment, or a
+  working directory.
+- The desktop action always requires a process-local `ApprovalService` decision.
+  Waiting is timeout and cancellation aware; a cancelled or expired request does
+  not launch an application.
+- The implementation uses `asyncio.create_subprocess_exec` with fixed
+  allowlisted arguments and no shell.
+- Normalized invocation metadata and runtime events are persisted/available by
+  run. Output is bounded and no raw subprocess streams are stored.
 
 ## Future adapters
 

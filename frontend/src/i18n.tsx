@@ -4,7 +4,7 @@ export type Locale = "en" | "ru";
 
 const copy = {
   en: {
-    nav: { dashboard: "Dashboard", projects: "Projects", agents: "Agents", approvals: "Approvals", providers: "Providers", vision: "Vision", events: "Events", settings: "Settings", help: "Help" },
+    nav: { dashboard: "Dashboard", projects: "Projects", agents: "Agents", approvals: "Approvals", providers: "Providers", vision: "Vision", lexi: "Lexi", events: "Events", settings: "Settings", help: "Help" },
     shell: { eyebrow: "LOCAL CONTROL PLANE", workspace: "Agent workspace", events: "Events", retry: "Retry", language: "Language", collapse: "Collapse navigation", toggle: "Toggle navigation" },
     help: {
       eyebrow: "OPERATOR GUIDE", title: "Help and operating guide", intro: "AgentGraph OS is a local control plane. The backend remains the source of truth for runs, approvals, providers, and vision data.",
@@ -20,9 +20,12 @@ const copy = {
       ],
       safetyTitle: "Permissions and safety", safety: "Buttons provide guidance only. The backend authorizes every request. If remote control is disabled or your identity lacks a permission, read the server error instead of retrying with another identity.",
     },
+    lexi: {
+      eyebrow: "LOCAL ASSISTANT", title: "Lexi workspace", loading: "Loading Lexi workspace...", bootstrapTitle: "Install Lexi", bootstrapDescription: "Lexi is not installed yet. Install the normal AgentGraph workflow before starting a task.", bootstrap: "Install Lexi", bootstrapping: "Installing Lexi...", installed: "Lexi is installed as a normal AgentGraph workflow.", provider: "Model route", providers: "Available providers", noProviders: "No provider is currently available.", composer: "Ask Lexi", task: "Task", taskPlaceholder: "Describe the task for Lexi.", start: "Start run", starting: "Starting run...", cancel: "Cancel run", cancelling: "Requesting cancellation...", cancelPending: "Cancellation is awaiting server confirmation.", output: "Output", noOutput: "Execution output will appear when the backend reports it.", fullRun: "Open full run", recentRuns: "Recent runs", noRuns: "No Lexi runs yet.", memory: "Scoped memory", memoryEmpty: "No scoped memory records yet.", memoryKind: "Kind", memoryContent: "Memory content", memoryTags: "Tags", memoryTagsPlaceholder: "comma, separated", addMemory: "Add memory", addingMemory: "Adding memory...", deleteMemory: "Delete memory", deletingMemory: "Deleting memory...", injectedMemory: "Injected memory", noInjectedMemory: "No memory was injected for this run.", deletedMemory: "deleted", toolActivity: "Tool activity", noTools: "No tool activity for this run.", pendingApproval: "A controlled action is awaiting approval.", pendingApprovals: "Controlled actions are awaiting approval.", openApprovals: "Open approvals", retry: "Retry", error: "Lexi workspace could not load.", selectedRun: "Selected run", milliseconds: "ms", kinds: { fact: "Fact", preference: "Preference", note: "Note", summary: "Summary" },
+    },
   },
   ru: {
-    nav: { dashboard: "Панель", projects: "Проекты", agents: "Агенты", approvals: "Подтверждения", providers: "Провайдеры", vision: "Зрение", events: "События", settings: "Настройки", help: "Помощь" },
+    nav: { dashboard: "Панель", projects: "Проекты", agents: "Агенты", approvals: "Подтверждения", providers: "Провайдеры", vision: "Зрение", lexi: "Lexi", events: "События", settings: "Настройки", help: "Помощь" },
     shell: { eyebrow: "ЛОКАЛЬНАЯ ПАНЕЛЬ УПРАВЛЕНИЯ", workspace: "Рабочее пространство", events: "События", retry: "Повторить", language: "Язык", collapse: "Свернуть навигацию", toggle: "Открыть навигацию" },
     help: {
       eyebrow: "РУКОВОДСТВО ОПЕРАТОРА", title: "Помощь и руководство", intro: "AgentGraph OS — локальная панель управления. Backend остаётся источником истины для run, подтверждений, провайдеров и данных Vision.",
@@ -37,6 +40,9 @@ const copy = {
         ["Настройки", "Просматривайте возможности сервера и состояние соединения. Секреты, credentials провайдеров и настройки сервера намеренно не изменяются из браузера."],
       ],
       safetyTitle: "Права и безопасность", safety: "Кнопки дают только UX-подсказки. Каждый запрос авторизуется backend. Если remote control отключён или у identity нет права, прочитайте ошибку сервера, а не пытайтесь обойти её другой identity.",
+    },
+    lexi: {
+      eyebrow: "ЛОКАЛЬНЫЙ АССИСТЕНТ", title: "Рабочее пространство Lexi", loading: "Загрузка рабочего пространства Lexi...", bootstrapTitle: "Установить Lexi", bootstrapDescription: "Lexi ещё не установлена. Установите обычный workflow AgentGraph перед запуском задачи.", bootstrap: "Установить Lexi", bootstrapping: "Установка Lexi...", installed: "Lexi установлена как обычный workflow AgentGraph.", provider: "Маршрут модели", providers: "Доступные провайдеры", noProviders: "Сейчас нет доступных провайдеров.", composer: "Задать вопрос Lexi", task: "Задача", taskPlaceholder: "Опишите задачу для Lexi.", start: "Запустить run", starting: "Запуск run...", cancel: "Отменить run", cancelling: "Запрос отмены...", cancelPending: "Отмена ожидает подтверждения сервера.", output: "Результат", noOutput: "Результат появится, когда backend сообщит о выполнении.", fullRun: "Открыть полный run", recentRuns: "Последние run", noRuns: "Запусков Lexi пока нет.", memory: "Изолированная память", memoryEmpty: "Изолированных записей памяти пока нет.", memoryKind: "Тип", memoryContent: "Содержимое памяти", memoryTags: "Теги", memoryTagsPlaceholder: "через, запятую", addMemory: "Добавить память", addingMemory: "Добавление памяти...", deleteMemory: "Удалить память", deletingMemory: "Удаление памяти...", injectedMemory: "Внедрённая память", noInjectedMemory: "Для этого run память не внедрялась.", deletedMemory: "удалено", toolActivity: "Активность инструментов", noTools: "Для этого run нет активности инструментов.", pendingApproval: "Управляемое действие ожидает подтверждения.", pendingApprovals: "Управляемые действия ожидают подтверждения.", openApprovals: "Открыть подтверждения", retry: "Повторить", error: "Не удалось загрузить рабочее пространство Lexi.", selectedRun: "Выбранный run", milliseconds: "мс", kinds: { fact: "Факт", preference: "Предпочтение", note: "Заметка", summary: "Сводка" },
     },
   },
 } as const;

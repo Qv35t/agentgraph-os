@@ -129,7 +129,7 @@ async def create_agent(
                 name=payload.name,
                 description=payload.description,
                 model_ref=payload.model_ref,
-                graph_definition=payload.graph_definition.model_dump(),
+                graph_definition=payload.graph_definition.model_dump(exclude_none=True),
             )
         ),
     )
@@ -170,7 +170,7 @@ async def update_agent_graph(
                     RuntimeCommandType.UPDATE_AGENT_GRAPH,
                     principal,
                     agent_id,
-                    graph_definition=payload.graph_definition.model_dump(),
+                    graph_definition=payload.graph_definition.model_dump(exclude_none=True),
                 )
             ),
         )

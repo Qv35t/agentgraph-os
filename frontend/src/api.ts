@@ -12,6 +12,10 @@ import {
   type Agent,
   type Approval,
   type GraphDefinition,
+  type Lexi,
+  type Memory,
+  type MemoryKind,
+  type MemoryUsage,
   type Project,
   type Provider,
   type Run,
@@ -23,6 +27,11 @@ import {
   type VisionAnalysis,
   type VisionAsset,
   type VisionFolder,
+  type ToolInvocation,
+  lexiSchema,
+  memorySchema,
+  memoryUsageSchema,
+  toolInvocationSchema,
 } from "./contracts";
 
 const apiBaseUrl = import.meta.env.VITE_AGENTGRAPH_API_URL || "/api/v1";
@@ -41,6 +50,7 @@ async function request<T>(path: string, schema: z.ZodType<T>, init?: RequestInit
       headers: { ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }), "X-AgentGraph-Identity": identity, ...init?.headers },
       signal: AbortSignal.timeout(10_000),
     });
+    if (response.status === 204) return schema.parse(undefined);
     const payload: unknown = await response.json();
     const failure = errorSchema.safeParse(payload);
     if (!response.ok || failure.success) {
@@ -84,6 +94,13 @@ export const api = {
   visionFolders: () => request<VisionFolder[]>("/vision/folders", z.array(visionFolderSchema)),
   registerVisionFolder: (payload: { display_name: string; root: string }) => request<VisionFolder>("/vision/folders", visionFolderSchema, { method: "POST", body: JSON.stringify(payload) }),
   scanVisionFolder: (id: string) => request<Record<string, number>>(`/vision/folders/${id}/scan`, z.record(z.number()), { method: "POST" }),
+  lexi: () => request<Lexi>("/lexi", lexiSchema),
+  bootstrapLexi: () => request<Lexi>("/lexi/bootstrap", lexiSchema, { method: "POST" }),
+  memory: (agentId: string) => request<Memory[]>(`/memory?agent_id=${encodeURIComponent(agentId)}`, z.array(memorySchema)),
+  createMemory: (payload: { agent_id: string; kind: MemoryKind; content: string; tags: string[] }) => request<Memory>("/memory", memorySchema, { method: "POST", body: JSON.stringify(payload) }),
+  deleteMemory: (id: string, agentId: string) => request<void>(`/memory/${id}?agent_id=${encodeURIComponent(agentId)}`, z.void(), { method: "DELETE" }),
+  runMemory: (runId: string) => request<MemoryUsage[]>(`/memory/runs/${runId}`, z.array(memoryUsageSchema)),
+  runTools: (runId: string) => request<ToolInvocation[]>(`/runs/${runId}/tools`, z.array(toolInvocationSchema)),
 };
 
 export const eventSocketConfig = { identity, eventSchema };

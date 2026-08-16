@@ -6,8 +6,11 @@ import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from agentgraph.api.lexi import lexi_router
+from agentgraph.api.memory import memory_router
 from agentgraph.api.remote import remote_router
 from agentgraph.api.routes import router
+from agentgraph.api.tools import tool_router
 from agentgraph.api.vision import vision_router
 from agentgraph.models.router import DisabledProvider, ModelProvider, ModelRouter
 from agentgraph.persistence.database import create_database_engine, create_session_factory
@@ -16,9 +19,14 @@ from agentgraph.providers.openai_compatible import OpenAICompatibleProvider
 from agentgraph.providers.opencode import OpenCodeBridgeProvider
 from agentgraph.runtime.events import RuntimeEventBus
 from agentgraph.runtime.graph import ModelGraphRuntime
+from agentgraph.runtime.lexi import LexiGraphRuntime
 from agentgraph.runtime.registry import RunRegistry
+from agentgraph.runtime.selector import WorkflowRuntime
+from agentgraph.services.lexi import LexiTemplateService
 from agentgraph.services.manager import AgentManager, AgentRuntime
+from agentgraph.services.memory import MemoryService
 from agentgraph.services.remote import ApprovalService, AuthorizationService, RemoteCommandService
+from agentgraph.services.tools import ToolService
 from agentgraph.services.vision import VisionService
 from agentgraph.settings import Settings
 
@@ -70,9 +78,16 @@ def create_app(
                 model_router = ModelRouter(providers, "ollama://qwen3-4b-nothink:latest")
             else:
                 model_router = configured_router
+            approvals = ApprovalService(event_bus)
+            memory_service = MemoryService(create_session_factory(engine), runtime_settings)
+            tool_service = ToolService(create_session_factory(engine), approvals, event_bus, runtime_settings)
+            selected_runtime = runtime or WorkflowRuntime(
+                ModelGraphRuntime(model_router),
+                LexiGraphRuntime(model_router, memory_service, tool_service, runtime_settings),
+            )
             manager = AgentManager(
                 create_session_factory(engine),
-                runtime or ModelGraphRuntime(model_router),
+                selected_runtime,
                 registry,
                 runtime_settings.runtime_delay_seconds,
                 runtime_settings.cancellation_timeout_seconds,
@@ -88,7 +103,10 @@ def create_app(
             )
             app.state.authorization = authorization
             app.state.remote_commands = RemoteCommandService(manager, model_router, authorization)
-            app.state.approvals = ApprovalService(event_bus)
+            app.state.approvals = approvals
+            app.state.memory_service = memory_service
+            app.state.tool_service = tool_service
+            app.state.lexi_service = LexiTemplateService(manager)
             app.state.vision_service = VisionService(
                 create_session_factory(engine), model_router, event_bus, runtime_settings
             )
@@ -127,6 +145,9 @@ def create_app(
     if runtime_settings.legacy_api_enabled:
         app.include_router(router)
     app.include_router(remote_router)
+    app.include_router(memory_router)
+    app.include_router(lexi_router)
+    app.include_router(tool_router)
     app.include_router(vision_router)
     return app
 

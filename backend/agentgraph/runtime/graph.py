@@ -5,6 +5,7 @@ from langgraph.graph import END, START, StateGraph
 
 from agentgraph.models.contracts import ModelMessage, ModelResponse
 from agentgraph.models.router import ModelRouter
+from agentgraph.runtime.execution import AgentExecutionRequest
 
 
 class RuntimeState(TypedDict):
@@ -27,15 +28,22 @@ class DeterministicGraphRuntime:
         self._graph = builder.compile()
 
     async def invoke(
-        self, *, agent_id: UUID, run_id: UUID, input_text: str, model_ref: str = "auto://default"
+        self,
+        execution: AgentExecutionRequest | None = None,
+        *,
+        agent_id: UUID | None = None,
+        run_id: UUID | None = None,
+        input_text: str | None = None,
+        model_ref: str = "auto://default",
     ) -> ModelResponse:
+        execution = _execution(execution, agent_id, run_id, input_text, model_ref)
         result = self._graph.invoke(
             {
-                "agent_id": str(agent_id),
-                "run_id": str(run_id),
-                "input_text": input_text,
+                "agent_id": str(execution.agent_id),
+                "run_id": str(execution.run_id),
+                "input_text": execution.input_text,
                 "output_text": "",
-                "model_ref": model_ref,
+                "model_ref": execution.model_ref,
                 "model_response": None,
             }
         )
@@ -55,14 +63,23 @@ class ModelGraphRuntime:
         builder.add_edge("generate", END)
         self._graph = builder.compile()
 
-    async def invoke(self, *, agent_id: UUID, run_id: UUID, input_text: str, model_ref: str) -> ModelResponse:
+    async def invoke(
+        self,
+        execution: AgentExecutionRequest | None = None,
+        *,
+        agent_id: UUID | None = None,
+        run_id: UUID | None = None,
+        input_text: str | None = None,
+        model_ref: str = "auto://default",
+    ) -> ModelResponse:
+        execution = _execution(execution, agent_id, run_id, input_text, model_ref)
         result = await self._graph.ainvoke(
             {
-                "agent_id": str(agent_id),
-                "run_id": str(run_id),
-                "input_text": input_text,
+                "agent_id": str(execution.agent_id),
+                "run_id": str(execution.run_id),
+                "input_text": execution.input_text,
                 "output_text": "",
-                "model_ref": model_ref,
+                "model_ref": execution.model_ref,
                 "model_response": None,
             }
         )
@@ -76,3 +93,17 @@ class ModelGraphRuntime:
             state["model_ref"], [ModelMessage(role="user", content=state["input_text"])]
         )
         return {"output_text": response.content, "model_response": response}
+
+
+def _execution(
+    execution: AgentExecutionRequest | None,
+    agent_id: UUID | None,
+    run_id: UUID | None,
+    input_text: str | None,
+    model_ref: str,
+) -> AgentExecutionRequest:
+    if execution is not None:
+        return execution
+    if agent_id is None or run_id is None or input_text is None:
+        raise TypeError("execution or agent_id, run_id, and input_text are required")
+    return AgentExecutionRequest(agent_id, run_id, input_text, model_ref, {})
