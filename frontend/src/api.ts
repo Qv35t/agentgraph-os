@@ -21,6 +21,7 @@ import {
   type Project,
   type Provider,
   type ProbeResult,
+  type RecoveryReport,
   type Run,
   type RunTreeNode,
   type RuntimeEvent,
@@ -37,6 +38,7 @@ import {
   memoryUsageSchema,
   nodeSchema,
   probeResultSchema,
+  recoveryReportSchema,
   toolInvocationSchema,
 } from "./contracts";
 
@@ -85,6 +87,7 @@ export const api = {
     request<Agent>(`/agents/${id}/graph`, agentSchema, { method: "PATCH", body: JSON.stringify({ graph_definition: graphDefinition }) }),
   agentRuns: (agentId: string) => request<Run[]>(`/agents/${agentId}/runs`, z.array(runSchema)),
   run: (id: string) => request<Run>(`/runs/${id}`, runSchema),
+  recovery: (id: string) => request<RecoveryReport>(`/runs/${id}/recovery`, recoveryReportSchema),
   runTree: (id: string) => request<RunTreeNode>(`/runs/${id}/tree`, runTreeNodeSchema),
   startRun: (agentId: string, inputText: string) =>
     request<Run>(`/agents/${agentId}/runs`, runSchema, { method: "POST", body: JSON.stringify({ input_text: inputText }) }),

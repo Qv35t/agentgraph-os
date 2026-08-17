@@ -157,6 +157,48 @@ class RunResponse(BaseModel):
         )
 
 
+class RecoveryCheckpointResponse(BaseModel):
+    checkpoint_id: str
+    sequence: int | None
+    format_version: int | None
+    reason: str
+    checksum: str
+    created_at: datetime
+
+
+class RecoveryActionResponse(BaseModel):
+    entry_id: str
+    action_type: str
+    risk: str
+    status: str
+    rollback_status: str
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
+
+
+class RecoveryDecisionResponse(BaseModel):
+    decision_id: str
+    checkpoint_id: str | None
+    outcome: str
+    details: dict[str, object]
+    created_at: datetime
+
+
+class RecoveryLimitsResponse(BaseModel):
+    automatic_resume: bool
+    automatic_rollback: bool
+    description: str
+
+
+class RecoveryReportResponse(BaseModel):
+    run_id: str
+    checkpoints: list[RecoveryCheckpointResponse]
+    actions: list[RecoveryActionResponse]
+    decisions: list[RecoveryDecisionResponse]
+    limits: RecoveryLimitsResponse
+
+
 class RunTreeNodeResponse(BaseModel):
     node_id: str | None
     depth: int

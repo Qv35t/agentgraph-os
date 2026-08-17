@@ -46,4 +46,11 @@ describe("remote API client", () => {
     await expect(api.nodes()).resolves.toEqual([node]);
     await expect(api.probeNode("node-1")).resolves.toMatchObject({ status: "succeeded", result: { ok: true } });
   });
+
+  it("parses durable recovery evidence", async () => {
+    const report = { run_id: "run-1", checkpoints: [{ checkpoint_id: "checkpoint-1", sequence: 1, format_version: 1, reason: "created", checksum: "a".repeat(64), created_at: "2026-08-17T00:00:00Z" }], actions: [], decisions: [{ decision_id: "decision-1", checkpoint_id: "checkpoint-1", outcome: "stopped_no_replay", details: { reason: "safe" }, created_at: "2026-08-17T00:00:00Z" }], limits: { automatic_resume: false, automatic_rollback: false, description: "No replay." } };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(report), { status: 200 })));
+
+    await expect(api.recovery("run-1")).resolves.toMatchObject({ decisions: [{ outcome: "stopped_no_replay" }] });
+  });
 });

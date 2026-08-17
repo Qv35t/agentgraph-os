@@ -2,7 +2,7 @@
 
 This map separates the **implemented current state** from the **approved target architecture**. A target document is not authorization to add its capability outside its roadmap phase.
 
-## Current State: Phases 1-9
+## Current State: Phases 1-10
 
 AgentGraph OS is a local-first modular monolith. A loopback FastAPI application is the lifecycle and authorization authority. It persists durable records in SQLite while process-local handles track live work. The browser is a client of versioned REST and normalized WebSocket contracts, never a runtime authority.
 
@@ -35,7 +35,9 @@ Implemented boundaries:
 - Lexi is a normal Phase 6 agent/workflow with scoped lexical SQLite memory and registered, typed, approval-gated tools. There is no arbitrary shell.
 - Vision is local observation through the model boundary with validated asset and folder controls.
 - Remote control is disabled by default. Current authorization uses local configuration and current approvals are process-local, not durable.
-- Restart recovery truthfully fails active runs. It does not checkpoint or resume work.
+- Restart recovery records a checkpoint/ledger-based decision before truthfully
+  failing active runs. It never resumes, retries, replays, or rolls back work
+  automatically.
 - Phase 9 Core persists Worker registry state. Workers reconnect using a stable
   opaque ID and an HMAC enrollment proof, report bounded safe capabilities, and
   can execute only typed `system.probe`. There is one Core; no scheduler,

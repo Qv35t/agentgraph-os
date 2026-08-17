@@ -23,7 +23,7 @@ for (const file of markdownFiles(resolve(root, "docs"))) {
     }
   }
 }
-console.log("Phase 9 check passed.");
+console.log("Phase 10 check passed.");
 
 function* markdownFiles(directory) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {

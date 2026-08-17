@@ -4,14 +4,13 @@ Last updated: **2026-08-17**
 
 ## Current Phase
 
-**Phase 9 - Distributed Core Foundation: DONE.**
+**Phase 10 - Resilience, Checkpoints, and Recovery: DONE.**
 
-Phase 9 adds a minimal persistent Core/Worker foundation: explicit protected
-enrollment, stable Worker identity, liveness/capability reporting, authorized
-node controls, and one bounded `system.probe` operation. Automated verification,
-same-machine backend transport acceptance, and owner-confirmed browser Nodes
-acceptance passed on 2026-08-17. Physical two-machine validation remains a
-recommended non-blocking real-hardware follow-up.
+Phase 10 adds durable local run checkpoints, controlled-action ledger entries,
+conservative startup recovery assessment, and read-only recovery observability.
+Interrupted runs are stopped and recorded with explicit blockers; they are never
+resumed, replayed, rolled back, or failed over automatically. Automated checks,
+migration verification, and manual fault-injection acceptance passed on 2026-08-17.
 
 ## Implemented
 
@@ -26,6 +25,7 @@ recommended non-blocking real-hardware follow-up.
 | 6 - Lexi Integration | DONE | Lexi workflow, scoped SQLite Memory MVP, controlled Tool MVP, local Ollama smoke, owner acceptance |
 | 7 - Multi-Agent Orchestration | DONE | Validated static team DAGs, persisted child runs, bounded delegation, run tree, local Ollama smokes, owner acceptance |
 | 9 - Distributed Core Foundation | DONE | Persistent Core-owned node registry, typed v1 Worker transport, bounded probe dispatch, APIs, Nodes UI, and accepted same-machine lifecycle |
+| 10 - Resilience, Checkpoints, and Recovery | DONE | Durable local checkpoints, action ledger, conservative stale-run assessment, recovery API/UI, and manual fault-injection acceptance |
 
 Current limitations are intentional: the backend defaults to loopback; remote control is disabled by default; approvals are process-local; active runs fail on restart rather than resume; and the OpenCode bridge is model transport only.
 
@@ -47,7 +47,7 @@ The canonical target records are [`FUTURE_VISION.md`](FUTURE_VISION.md), [`ARCHI
 |---|---|---|
 | 8 - Future Architecture and Roadmap Baseline | DONE | Documentation consistency, `pnpm check`, and owner repository cross-document review complete |
 | 9 - Distributed Core Foundation | DONE | Automated checks, browser Nodes acceptance, and same-machine Core/Worker lifecycle acceptance passed; two-machine validation is recommended, not blocking |
-| 10 - Resilience, Checkpoints, and Recovery | PLANNED | Fault-injection recovery verification |
+| 10 - Resilience, Checkpoints, and Recovery | DONE | Automated checks, migration cycle, browser build, and manual fault-injection recovery drill passed on 2026-08-17 |
 | 11 - Identity, Trust, Approvals, and Credentials | PLANNED | Authorization and adversarial security verification |
 | 12-21 | FUTURE | Dependency-ordered gates in `ROADMAP.md` |
 

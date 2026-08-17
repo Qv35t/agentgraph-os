@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from agentgraph.api.lexi import lexi_router
 from agentgraph.api.memory import memory_router
 from agentgraph.api.nodes import node_router
+from agentgraph.api.recovery import recovery_router
 from agentgraph.api.remote import remote_router
 from agentgraph.api.routes import router
 from agentgraph.api.tools import tool_router
@@ -29,6 +30,7 @@ from agentgraph.services.lexi import LexiTemplateService
 from agentgraph.services.manager import AgentManager, AgentRuntime
 from agentgraph.services.memory import MemoryService
 from agentgraph.services.nodes import NodeService
+from agentgraph.services.recovery import RecoveryService
 from agentgraph.services.remote import ApprovalService, AuthorizationService, RemoteCommandService
 from agentgraph.services.tools import ToolService
 from agentgraph.services.vision import VisionService
@@ -84,8 +86,11 @@ def create_app(
             else:
                 model_router = configured_router
             approvals = ApprovalService(event_bus)
+            recovery_service = RecoveryService(create_session_factory(engine), event_bus, runtime_settings)
             memory_service = MemoryService(create_session_factory(engine), runtime_settings)
-            tool_service = ToolService(create_session_factory(engine), approvals, event_bus, runtime_settings)
+            tool_service = ToolService(
+                create_session_factory(engine), approvals, event_bus, runtime_settings, recovery=recovery_service
+            )
             selected_runtime = runtime or WorkflowRuntime(
                 ModelGraphRuntime(model_router),
                 LexiGraphRuntime(model_router, memory_service, tool_service, runtime_settings),
@@ -99,6 +104,7 @@ def create_app(
                 event_bus,
                 runtime_settings.project_id,
                 runtime_settings,
+                recovery_service,
             )
             if isinstance(selected_runtime, WorkflowRuntime):
                 selected_runtime.bind_team(TeamGraphRuntime(model_router, manager, runtime_settings))
@@ -120,6 +126,7 @@ def create_app(
             app.state.approvals = approvals
             app.state.memory_service = memory_service
             app.state.tool_service = tool_service
+            app.state.recovery_service = recovery_service
             app.state.lexi_service = LexiTemplateService(manager)
             app.state.vision_service = VisionService(
                 create_session_factory(engine), model_router, event_bus, runtime_settings
@@ -171,6 +178,7 @@ def create_app(
         app.include_router(router)
     app.include_router(remote_router)
     app.include_router(node_router)
+    app.include_router(recovery_router)
     app.include_router(worker_router)
     app.include_router(memory_router)
     app.include_router(lexi_router)

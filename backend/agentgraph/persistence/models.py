@@ -8,6 +8,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from agentgraph.domain.distributed import NodeRole, NodeStatus
 from agentgraph.domain.entities import AgentStatus, RunStatus
+from agentgraph.domain.recovery import ActionLedgerStatus, CheckpointReason, RecoveryOutcome
 from agentgraph.domain.vision import VisionAnalysisStatus, VisionMode
 
 
@@ -66,6 +67,7 @@ class AgentRunRecord(Base):
     output_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    execution_spec: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
 
 
 class RunDelegationRecord(Base):
@@ -103,6 +105,57 @@ class NodeRecord(Base):
         DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
     )
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class RunCheckpointRecord(Base):
+    __tablename__ = "run_checkpoints"
+    __table_args__ = (UniqueConstraint("run_id", "sequence", name="uq_run_checkpoints_run_sequence"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"), nullable=False, index=True)
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    format_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    reason: Mapped[CheckpointReason] = mapped_column(
+        SQLAlchemyEnum(CheckpointReason, native_enum=False, values_callable=enum_values), nullable=False
+    )
+    state: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False)
+    checksum: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
+class RunActionLedgerEntryRecord(Base):
+    __tablename__ = "run_action_ledger_entries"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"), nullable=False, index=True)
+    tool_invocation_id: Mapped[str | None] = mapped_column(
+        ForeignKey("tool_invocations.id", ondelete="SET NULL"), nullable=True, unique=True
+    )
+    action_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    risk: Mapped[str] = mapped_column(String(20), nullable=False)
+    status: Mapped[ActionLedgerStatus] = mapped_column(
+        SQLAlchemyEnum(ActionLedgerStatus, native_enum=False, values_callable=enum_values), nullable=False
+    )
+    action_details: Mapped[dict[str, object]] = mapped_column("metadata", JSON, nullable=False, default=dict)
+    rollback_status: Mapped[str] = mapped_column(String(30), nullable=False, default="not_supported")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class RunRecoveryDecisionRecord(Base):
+    __tablename__ = "run_recovery_decisions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    run_id: Mapped[str] = mapped_column(ForeignKey("agent_runs.id", ondelete="CASCADE"), nullable=False, index=True)
+    checkpoint_id: Mapped[str | None] = mapped_column(
+        ForeignKey("run_checkpoints.id", ondelete="SET NULL"), nullable=True
+    )
+    outcome: Mapped[RecoveryOutcome] = mapped_column(
+        SQLAlchemyEnum(RecoveryOutcome, native_enum=False, values_callable=enum_values), nullable=False
+    )
+    details: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
 
 
 class VisionAssetRecord(Base):

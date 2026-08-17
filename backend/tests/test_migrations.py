@@ -26,12 +26,15 @@ def test_alembic_upgrade_created_backend_tables(database_path: Path, settings: S
         "tool_invocations",
         "run_delegations",
         "nodes",
+        "run_checkpoints",
+        "run_action_ledger_entries",
+        "run_recovery_decisions",
         "alembic_version",
     }
     assert expected_tables.issubset(tables)
     with sqlite3.connect(database_path) as connection:
         run_columns = {row[1] for row in connection.execute("PRAGMA table_info(agent_runs)")}
-    assert {"provider_id", "model_id", "total_tokens", "latency_ms"}.issubset(run_columns)
+    assert {"provider_id", "model_id", "total_tokens", "latency_ms", "execution_spec"}.issubset(run_columns)
     with sqlite3.connect(database_path) as connection:
         node_columns = {row[1] for row in connection.execute("PRAGMA table_info(nodes)")}
     assert {"id", "status", "enrollment_hash", "capabilities", "last_seen_at"}.issubset(node_columns)
@@ -125,3 +128,23 @@ def test_phase8_database_upgrades_and_downgrades_phase9_node_schema(tmp_path: Pa
     with sqlite3.connect(database_path) as connection:
         tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert "nodes" not in tables
+
+
+def test_phase9_database_upgrades_and_downgrades_phase10_recovery_schema(tmp_path: Path) -> None:
+    database_path = tmp_path / "phase9.db"
+    database_url = f"sqlite+aiosqlite:///{database_path}"
+    upgrade_database(database_url, "20260817_0006")
+    upgrade_database(database_url)
+    with sqlite3.connect(database_path) as connection:
+        tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        run_columns = {row[1] for row in connection.execute("PRAGMA table_info(agent_runs)")}
+    assert {"run_checkpoints", "run_action_ledger_entries", "run_recovery_decisions"}.issubset(tables)
+    assert "execution_spec" in run_columns
+
+    config = Config(str(BACKEND_ROOT / "alembic.ini"))
+    config.set_main_option("script_location", str(BACKEND_ROOT / "alembic"))
+    config.set_main_option("sqlalchemy.url", database_url)
+    command.downgrade(config, "20260817_0006")
+    with sqlite3.connect(database_path) as connection:
+        tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    assert "run_checkpoints" not in tables

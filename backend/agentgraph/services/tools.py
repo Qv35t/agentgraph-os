@@ -7,12 +7,14 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from agentgraph.domain.recovery import ActionLedgerStatus
 from agentgraph.domain.remote import RuntimeEvent, RuntimeEventType
 from agentgraph.domain.tools import ToolDefinition, ToolResult, ToolRisk, ToolStatus
 from agentgraph.persistence.database import SessionFactory
 from agentgraph.persistence.models import ToolInvocationRecord
 from agentgraph.repositories.tool_invocations import ToolInvocationRepository
 from agentgraph.runtime.events import RuntimeEventBus
+from agentgraph.services.recovery import RecoveryService
 from agentgraph.services.remote import ApprovalService
 from agentgraph.settings import Settings
 
@@ -62,6 +64,7 @@ class ToolService:
         events: RuntimeEventBus,
         settings: Settings,
         launcher: DesktopLauncher | None = None,
+        recovery: RecoveryService | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._approvals = approvals
@@ -70,6 +73,7 @@ class ToolService:
         self._launcher = launcher or _SubprocessDesktopLauncher()
         self._allowlist = _application_allowlist(settings.tool_application_allowlist_json)
         self._repository = ToolInvocationRepository()
+        self._recovery = recovery or RecoveryService(session_factory, events, settings)
 
     def definitions(self) -> tuple[ToolDefinition, ...]:
         return tuple(self._definitions.values())
@@ -128,6 +132,14 @@ class ToolService:
                     invocation.id, ToolResult(tool_id, ToolStatus.CANCELLED, approval_id=approval_id)
                 )
 
+        ledger_entry_id = await self._recovery.record_action_intent(
+            run_id=run_id,
+            tool_invocation_id=invocation.id,
+            action_type=tool_id,
+            risk=definition.risk.value,
+            metadata=invocation.input_metadata,
+        )
+        await self._recovery.update_action(ledger_entry_id, ActionLedgerStatus.STARTED)
         started = monotonic()
         await self._events.publish(
             RuntimeEvent.create(
@@ -143,15 +155,18 @@ class ToolService:
             )
         except asyncio.CancelledError:
             result = ToolResult(tool_id, ToolStatus.CANCELLED, error_code="tool_cancelled", approval_id=approval_id)
-            await self._complete(invocation.id, result, started)
+            await self._complete(invocation.id, result, started, ledger_entry_id, ActionLedgerStatus.UNCERTAIN)
             raise
         except TimeoutError:
             result = ToolResult(tool_id, ToolStatus.FAILED, error_code="tool_timeout", approval_id=approval_id)
+            ledger_status = ActionLedgerStatus.UNCERTAIN
         except OSError:
             result = ToolResult(tool_id, ToolStatus.FAILED, error_code="tool_execution_failed", approval_id=approval_id)
+            ledger_status = ActionLedgerStatus.FAILED
         else:
             result = ToolResult(tool_id, ToolStatus.SUCCEEDED, output=output, approval_id=approval_id)
-        return await self._complete(invocation.id, result, started)
+            ledger_status = ActionLedgerStatus.CONFIRMED
+        return await self._complete(invocation.id, result, started, ledger_entry_id, ledger_status)
 
     def _validate_arguments(
         self, tool_id: str, arguments: dict[str, object]
@@ -188,7 +203,12 @@ class ToolService:
         return f"Opened configured application '{arguments.application_id}'."
 
     async def _complete(
-        self, invocation_id: str, result: ToolResult, started: float | None = None
+        self,
+        invocation_id: str,
+        result: ToolResult,
+        started: float | None = None,
+        ledger_entry_id: str | None = None,
+        ledger_status: ActionLedgerStatus | None = None,
     ) -> ToolResult:
         duration_ms = int((monotonic() - started) * 1000) if started is not None else None
         completed = ToolResult(
@@ -209,6 +229,8 @@ class ToolService:
                 invocation.finished_at = datetime.now().astimezone()
                 invocation.duration_ms = completed.duration_ms
                 await session.commit()
+        if ledger_entry_id is not None and ledger_status is not None:
+            await self._recovery.update_action(ledger_entry_id, ledger_status)
         event_type = RuntimeEventType.TOOL_COMPLETED
         if completed.status is not ToolStatus.SUCCEEDED:
             event_type = RuntimeEventType.TOOL_FAILED

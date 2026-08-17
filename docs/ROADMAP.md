@@ -75,15 +75,22 @@ promotion remains a later phase and is not enabled.
 
 ### Phase 10 - Resilience, Checkpoints, and Recovery
 
+**Status:** DONE. Local checkpoint, action-ledger, and conservative no-replay
+recovery foundations are implemented. Automated verification, migration cycle,
+browser build, and manual fault-injection acceptance passed on 2026-08-17.
+
 Objective: make long-running work recoverable without replaying unsafe effects.
 
-Deliverables: versioned checkpoints, action ledger, incomplete-run recovery, fenced failover procedure, recovery observability, and explicit rollback limits.
+Deliverables: versioned checkpoints, action ledger, incomplete-run recovery,
+recovery observability, and explicit rollback limits. Fenced failover remains a
+later design/implementation concern under ADR-0006.
 
 Dependencies: Phase 9.
 
 Security: uncertain side effects stop for approval; split-brain and duplicate execution protections are tested.
 
-Gate: fault-injection tests cover restart, interrupted actions, corrupt checkpoints, and safe recovery decisions.
+Gate: automated checks and manual fault-injection acceptance cover restart,
+interrupted actions, corrupt checkpoints, and safe recovery decisions.
 
 ### Phase 11 - Identity, Trust, Approvals, and Credentials
 

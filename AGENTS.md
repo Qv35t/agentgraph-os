@@ -78,6 +78,7 @@ When a referenced file is relevant, use the Read tool to load it. Do **not** pre
 - Phase 7 → `@docs/phases/PHASE_07_MULTI_AGENT_ORCHESTRATION.md`
 - Phase 8 → `@docs/phases/PHASE_08_FUTURE_ARCHITECTURE_BASELINE.md`
 - Phase 9 → `@docs/phases/PHASE_09_DISTRIBUTED_CORE_FOUNDATION.md`
+- Phase 10 → `@docs/phases/PHASE_10_RESILIENCE_CHECKPOINTS_AND_RECOVERY.md`
 
 Prefer the matching `/phase-N` OpenCode command because it injects the correct phase context automatically.
 

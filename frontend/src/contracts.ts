@@ -69,6 +69,12 @@ export const runSchema = z.object({
 });
 export type Run = z.infer<typeof runSchema>;
 
+export const recoveryCheckpointSchema = z.object({ checkpoint_id: z.string(), sequence: z.number().nullable(), format_version: z.number().nullable(), reason: z.string(), checksum: z.string(), created_at: z.string() });
+export const recoveryActionSchema = z.object({ entry_id: z.string(), action_type: z.string(), risk: z.string(), status: z.string(), rollback_status: z.string(), created_at: z.string(), started_at: z.string().nullable(), finished_at: z.string().nullable() });
+export const recoveryDecisionSchema = z.object({ decision_id: z.string(), checkpoint_id: z.string().nullable(), outcome: z.string(), details: z.record(z.unknown()), created_at: z.string() });
+export const recoveryReportSchema = z.object({ run_id: z.string(), checkpoints: z.array(recoveryCheckpointSchema), actions: z.array(recoveryActionSchema), decisions: z.array(recoveryDecisionSchema), limits: z.object({ automatic_resume: z.boolean(), automatic_rollback: z.boolean(), description: z.string() }) });
+export type RecoveryReport = z.infer<typeof recoveryReportSchema>;
+
 export const runTreeNodeSchema: z.ZodType<RunTreeNode> = z.lazy(() => z.object({
   node_id: z.string().nullable(),
   depth: z.number(),

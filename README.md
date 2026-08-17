@@ -10,15 +10,18 @@ Local-first visual operating environment for AI agents.
 - Local vision observation, scoped SQLite Memory MVP, controlled typed tools, Lexi workflow, and bounded static multi-agent DAGs.
 - Phase 9 Core/Worker foundation: persistent Worker registry, protected outbound
   Worker transport, safe capabilities, and only `system.probe` dispatch.
+- Phase 10 recovery foundation: durable local checkpoints, controlled action
+  ledger records, conservative no-replay recovery assessment, and accepted
+  same-machine fault-injection recovery.
 
 The backend binds to loopback by default. OpenCode bridge mode is model transport only; it does not copy OpenCode credentials or provide a first-class Coder Agent. See [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) for verified current behavior and limitations.
 
 ## Future Direction
 
-Phase 9 is complete. NAS Core/failover, durable recovery and approvals, trusted
-remote access, autonomous Lexi planning, voice, PWA/Telegram, OpenCode
-orchestration, semantic memory/files, and advanced dashboard remain planned
-target capabilities.
+Phases 9-10 are complete. NAS Core/failover, durable approvals, trusted remote
+access, autonomous Lexi planning, voice, PWA/Telegram, OpenCode orchestration,
+semantic memory/files, and advanced dashboard remain planned target
+capabilities.
 
 Read [`docs/FUTURE_VISION.md`](docs/FUTURE_VISION.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), and [`docs/ROADMAP.md`](docs/ROADMAP.md).
 

@@ -33,7 +33,8 @@ flowchart TD
   `/api/v1/projects`, `/api/v1/agents`, `/api/v1/runs/{run_id}`,
   `/api/v1/agents/{agent_id}/runs`, `/api/v1/runs/{run_id}/stop`,
   `/api/v1/providers`, `/api/v1/approvals`, `/api/v1/events`, and Phase 9
-  `/api/v1/nodes` read/control/probe endpoints.
+  `/api/v1/nodes` read/control/probe endpoints, plus Phase 10 read-only
+  `/api/v1/runs/{run_id}/recovery` evidence.
 - `/ws/internal/workers` is a separate Core-only internal protocol, not a
   browser/client WebSocket. Workers authenticate with a derived enrollment
   proof and do not gain client or runtime authority.

@@ -48,6 +48,8 @@ class RuntimeEventType(StrEnum):
     WORKER_TASK_COMPLETED = "worker.task.completed"
     WORKER_TASK_FAILED = "worker.task.failed"
     WORKER_TASK_TIMED_OUT = "worker.task.timed_out"
+    CHECKPOINT_CREATED = "checkpoint.created"
+    RECOVERY_ASSESSED = "recovery.assessed"
 
 
 class Permission(StrEnum):

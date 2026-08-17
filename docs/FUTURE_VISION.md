@@ -34,7 +34,7 @@ The target primary topology is a NAS-hosted Primary Core with eligible backup no
 
 ## What Exists Today
 
-Phases 1-9 implemented a local-first modular monolith: FastAPI and SQLite persistence, provider-neutral model routing, a browser UI, vision observation, Lexi MVP with scoped SQLite memory and controlled tools, bounded static multi-agent DAGs, and a persistent Core-owned Worker registry with safe probe transport. The default service remains loopback-only. The canonical current-state record is [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
+Phases 1-10 implemented a local-first modular monolith: FastAPI and SQLite persistence, provider-neutral model routing, a browser UI, vision observation, Lexi MVP with scoped SQLite memory and controlled tools, bounded static multi-agent DAGs, a persistent Core-owned Worker registry with safe probe transport, and accepted local durable checkpoint/no-replay recovery. The default service remains loopback-only. The canonical current-state record is [`PROJECT_STATUS.md`](PROJECT_STATUS.md).
 
 ## Not Implemented
 

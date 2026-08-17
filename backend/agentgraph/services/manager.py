@@ -18,6 +18,7 @@ from agentgraph.domain.entities import (
     RunTreeNode,
 )
 from agentgraph.domain.orchestration import TeamGraphError, parse_team_graph
+from agentgraph.domain.recovery import CheckpointReason
 from agentgraph.domain.remote import RuntimeEvent, RuntimeEventType
 from agentgraph.models.contracts import ModelResponse, ModelRouterError
 from agentgraph.persistence.database import SessionFactory
@@ -29,6 +30,7 @@ from agentgraph.runtime.events import RuntimeEventBus
 from agentgraph.runtime.execution import AgentExecutionRequest, DelegationContext
 from agentgraph.runtime.registry import RunRegistry
 from agentgraph.services.errors import AgentNotFoundError, LifecycleConflictError, OrchestrationError, RunNotFoundError
+from agentgraph.services.recovery import RecoveryService
 from agentgraph.settings import Settings
 
 
@@ -49,6 +51,7 @@ class AgentManager:
         events: RuntimeEventBus | None = None,
         project_id: str = "project_local",
         settings: Settings | None = None,
+        recovery: RecoveryService | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._runtime = runtime
@@ -63,6 +66,7 @@ class AgentManager:
         self._events = events
         self._project_id = project_id
         self._settings = settings or Settings()
+        self._recovery = recovery
         self._execution_contexts: dict[UUID, DelegationContext] = {}
 
     async def create_agent(
@@ -187,6 +191,7 @@ class AgentManager:
         node_id: str | None,
     ) -> AgentRun:
         async with self._lock_for(agent_id):
+            recovery = self._recovery
             async with self._session_factory() as session:
                 # SQLite has no row-level locks. This serializes the durable active-run check.
                 await session.execute(text("BEGIN IMMEDIATE"))
@@ -202,6 +207,9 @@ class AgentManager:
                     await session.rollback()
                     raise LifecycleConflictError("This agent already has an active run") from error
                 agent.status = AgentStatus.RUNNING
+                checkpoint = (
+                    await recovery.create_initial_checkpoint(session, run, agent) if recovery is not None else None
+                )
                 if parent_run_id is not None and node_id is not None and context is not None:
                     await self._delegation_repository.create(
                         session,
@@ -221,6 +229,8 @@ class AgentManager:
             await self._publish(
                 RuntimeEventType.RUN_CREATED, run_id=run.id, agent_id=agent.id, payload={"status": run.status}
             )
+            if checkpoint is not None and recovery is not None:
+                await recovery.publish_checkpoint(checkpoint)
             return _run_from_record(run)
 
     async def get_run(self, run_id: UUID) -> AgentRun:
@@ -318,6 +328,9 @@ class AgentManager:
                 raise OrchestrationError("MISSING_AGENT_REFERENCE", "Team graph references an unknown agent")
 
     async def recover_stale_runs(self) -> None:
+        if self._recovery is not None:
+            await self._recovery.recover_stale_runs()
+            return
         async with self._session_factory() as session:
             stale_runs = await self._run_repository.list_stale(session)
             if not stale_runs:
@@ -373,6 +386,7 @@ class AgentManager:
             self._execution_contexts.pop(run_id, None)
 
     async def _mark_running(self, run_id: UUID) -> AgentRun:
+        recovery = self._recovery
         async with self._session_factory() as session:
             record = await self._run_repository.get(session, run_id)
             if record is None:
@@ -381,7 +395,14 @@ class AgentManager:
                 raise LifecycleConflictError("Run is no longer active")
             record.status = RunStatus.RUNNING
             record.started_at = _utc_now()
+            checkpoint = (
+                await recovery.create_lifecycle_checkpoint(session, record, CheckpointReason.RUNNING)
+                if recovery is not None
+                else None
+            )
             await session.commit()
+            if checkpoint is not None and recovery is not None:
+                await recovery.publish_checkpoint(checkpoint)
             await self._publish(
                 RuntimeEventType.RUN_STARTED,
                 run_id=record.id,
@@ -391,6 +412,7 @@ class AgentManager:
             return _run_from_record(record)
 
     async def _finish_succeeded(self, run_id: UUID, response: ModelResponse) -> None:
+        recovery = self._recovery
         async with self._terminal_lock_for(run_id):
             async with self._session_factory() as session:
                 record = await self._run_repository.get(session, run_id)
@@ -409,7 +431,14 @@ class AgentManager:
                 agent = await self._agent_repository.get(session, UUID(record.agent_id))
                 if agent is not None:
                     agent.status = AgentStatus.IDLE
+                checkpoint = (
+                    await recovery.create_lifecycle_checkpoint(session, record, CheckpointReason.SUCCEEDED)
+                    if recovery is not None
+                    else None
+                )
                 await session.commit()
+                if checkpoint is not None and recovery is not None:
+                    await recovery.publish_checkpoint(checkpoint)
                 await self._publish(
                     RuntimeEventType.RUN_COMPLETED,
                     run_id=record.id,
@@ -419,6 +448,7 @@ class AgentManager:
                 )
 
     async def _finish_cancelled(self, run_id: UUID) -> None:
+        recovery = self._recovery
         async with self._terminal_lock_for(run_id):
             async with self._session_factory() as session:
                 record = await self._run_repository.get(session, run_id)
@@ -429,7 +459,14 @@ class AgentManager:
                 agent = await self._agent_repository.get(session, UUID(record.agent_id))
                 if agent is not None:
                     agent.status = AgentStatus.IDLE
+                checkpoint = (
+                    await recovery.create_lifecycle_checkpoint(session, record, CheckpointReason.CANCELLED)
+                    if recovery is not None
+                    else None
+                )
                 await session.commit()
+                if checkpoint is not None and recovery is not None:
+                    await recovery.publish_checkpoint(checkpoint)
                 await self._publish(
                     RuntimeEventType.RUN_CANCELLED,
                     run_id=record.id,
@@ -438,6 +475,7 @@ class AgentManager:
                 )
 
     async def _finish_failed(self, run_id: UUID, error: str) -> None:
+        recovery = self._recovery
         async with self._terminal_lock_for(run_id):
             async with self._session_factory() as session:
                 record = await self._run_repository.get(session, run_id)
@@ -449,7 +487,14 @@ class AgentManager:
                 agent = await self._agent_repository.get(session, UUID(record.agent_id))
                 if agent is not None:
                     agent.status = AgentStatus.ERROR
+                checkpoint = (
+                    await recovery.create_lifecycle_checkpoint(session, record, CheckpointReason.FAILED)
+                    if recovery is not None
+                    else None
+                )
                 await session.commit()
+                if checkpoint is not None and recovery is not None:
+                    await recovery.publish_checkpoint(checkpoint)
                 await self._publish(
                     RuntimeEventType.RUN_FAILED,
                     run_id=record.id,
@@ -463,6 +508,23 @@ class AgentManager:
 
     def _terminal_lock_for(self, run_id: UUID) -> asyncio.Lock:
         return self._terminal_locks.setdefault(run_id, asyncio.Lock())
+
+    async def get_recovery_report(self, run_id: UUID) -> dict[str, object]:
+        await self.get_run(run_id)
+        recovery = self._recovery
+        if recovery is None:
+            return {
+                "run_id": str(run_id),
+                "checkpoints": [],
+                "actions": [],
+                "decisions": [],
+                "limits": {
+                    "automatic_resume": False,
+                    "automatic_rollback": False,
+                    "description": "Recovery is unavailable.",
+                },
+            }
+        return await recovery.report(run_id)
 
     async def _invoke_runtime(self, execution: AgentExecutionRequest) -> ModelResponse:
         if "execution" in inspect.signature(self._runtime.invoke).parameters:
