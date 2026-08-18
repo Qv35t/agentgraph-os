@@ -4,13 +4,12 @@ Last updated: **2026-08-17**
 
 ## Current Phase
 
-**Phase 10 - Resilience, Checkpoints, and Recovery: DONE.**
+**Phase 11 - Identity, Trust, Approvals, and Credentials: IN PROGRESS.**
 
-Phase 10 adds durable local run checkpoints, controlled-action ledger entries,
-conservative startup recovery assessment, and read-only recovery observability.
-Interrupted runs are stopped and recorded with explicit blockers; they are never
-resumed, replayed, rolled back, or failed over automatically. Automated checks,
-migration verification, and manual fault-injection acceptance passed on 2026-08-17.
+Phase 11A is PARTIAL: durable server-owned identity, cookie sessions, passkeys,
+encrypted local security state, and lockdown are implemented, but the existing
+ToolService and Approvals UI still use process-local approvals. Manual browser
+acceptance and the single durable approval authority remain required.
 
 ## Implemented
 
@@ -48,7 +47,7 @@ The canonical target records are [`FUTURE_VISION.md`](FUTURE_VISION.md), [`ARCHI
 | 8 - Future Architecture and Roadmap Baseline | DONE | Documentation consistency, `pnpm check`, and owner repository cross-document review complete |
 | 9 - Distributed Core Foundation | DONE | Automated checks, browser Nodes acceptance, and same-machine Core/Worker lifecycle acceptance passed; two-machine validation is recommended, not blocking |
 | 10 - Resilience, Checkpoints, and Recovery | DONE | Automated checks, migration cycle, browser build, and manual fault-injection recovery drill passed on 2026-08-17 |
-| 11 - Identity, Trust, Approvals, and Credentials | PLANNED | Authorization and adversarial security verification |
+| 11 - Identity, Trust, Approvals, and Credentials | IN PROGRESS | Phase 11A is PARTIAL; Phase 11B remains planned |
 | 12-21 | FUTURE | Dependency-ordered gates in `ROADMAP.md` |
 
 ## Status Update Rule

@@ -63,6 +63,14 @@ parallelism, depth, timeout, and context limits prevent unbounded delegation.
 Every child uses its own persisted agent model route, memory scope, and tool
 policy; a parent never inherits authority to bypass those boundaries.
 
+## Phase 11A Security Foundation
+
+Phase 11A adds server-owned cookie sessions, passkeys, encrypted local TOTP and
+vault storage, durable security state, CSRF checks, audit records, and lockdown.
+Client identity headers and WebSocket subprotocols are not authentication
+authority. The service remains loopback-first and manual security acceptance is
+not yet complete.
+
 ## Approved Future Trust Boundary
 
 Passkeys/WebAuthn, trusted devices, durable approvals and scoped grants,

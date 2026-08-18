@@ -63,3 +63,13 @@ class Settings(BaseSettings):
     worker_max_messages: int = Field(default=64, gt=0, le=1000)
     worker_reconnect_max_seconds: float = Field(default=30, gt=0, le=300)
     worker_task_timeout_seconds: float = Field(default=10, gt=0, le=60)
+    security_data_dir: str = "./data/security"
+    security_master_key_path: str = "./data/security/master.key"
+    bootstrap_secret_path: str = "./data/security/bootstrap.secret"
+    session_cookie_name: str = "agentgraph_session"
+    session_ttl_seconds: int = Field(default=28_800, gt=60, le=2_592_000)
+    webauthn_rp_id: str = "localhost"
+    webauthn_rp_name: str = "AgentGraph OS"
+    webauthn_allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
+    webauthn_challenge_ttl_seconds: int = Field(default=300, gt=0, le=900)
+    totp_issuer: str = "AgentGraph OS"

@@ -26,11 +26,7 @@ from agentgraph.runtime.graph import DeterministicGraphRuntime
 from agentgraph.services.tools import ToolService
 from agentgraph.settings import Settings
 
-from .conftest import upgrade_database
-
-
-def _headers(identity: str = "operator") -> dict[str, str]:
-    return {"x-agentgraph-identity": identity}
+from .conftest import seed_test_session, upgrade_database
 
 
 @pytest.fixture
@@ -47,6 +43,7 @@ def recovery_client(settings: Settings) -> Generator[TestClient, None, None]:
         "ollama://qwen3-4b-nothink:latest",
     )
     with TestClient(create_app(configured, DeterministicGraphRuntime(), router)) as client:
+        seed_test_session(client, configured)
         yield client
 
 
@@ -63,7 +60,6 @@ def _create_agent(client: TestClient, label: str = "Original") -> dict[str, obje
         dict[str, object],
         client.post(
             "/api/v1/agents",
-            headers=_headers(),
             json={
                 "name": "Recovery agent",
                 "description": None,
@@ -82,14 +78,14 @@ def _create_agent(client: TestClient, label: str = "Original") -> dict[str, obje
 def test_run_creates_immutable_checkpoints_and_recovery_api(recovery_client: TestClient, database_path: Path) -> None:
     agent = _create_agent(recovery_client)
     run = recovery_client.post(
-        f"/api/v1/agents/{agent['id']}/runs", headers=_headers(), json={"input_text": "recover me"}
+        f"/api/v1/agents/{agent['id']}/runs", json={"input_text": "recover me"}
     ).json()
     deadline = time.monotonic() + 1
     while time.monotonic() < deadline:
-        if recovery_client.get(f"/api/v1/runs/{run['id']}", headers=_headers()).json()["status"] == "succeeded":
+        if recovery_client.get(f"/api/v1/runs/{run['id']}").json()["status"] == "succeeded":
             break
         time.sleep(0.01)
-    recovery = recovery_client.get(f"/api/v1/runs/{run['id']}/recovery", headers=_headers())
+    recovery = recovery_client.get(f"/api/v1/runs/{run['id']}/recovery")
 
     assert recovery.status_code == 200
     assert [item["reason"] for item in recovery.json()["checkpoints"]] == ["succeeded", "running", "created"]
@@ -98,7 +94,6 @@ def test_run_creates_immutable_checkpoints_and_recovery_api(recovery_client: Tes
 
     recovery_client.patch(
         f"/api/v1/agents/{agent['id']}/graph",
-        headers=_headers(),
         json={
             "graph_definition": {
                 "version": 1,
@@ -185,7 +180,9 @@ def test_startup_records_conservative_recovery_outcomes(database_url: str) -> No
         await engine.dispose()
 
     asyncio.run(seed())
-    with TestClient(create_app(_settings(database_url), DeterministicGraphRuntime())) as client:
+    settings = _settings(database_url)
+    with TestClient(create_app(settings, DeterministicGraphRuntime())) as client:
+        seed_test_session(client, settings)
         for name, expected in (
             ("missing", "blocked_no_checkpoint"),
             ("corrupt", "blocked_corrupt_checkpoint"),
@@ -193,11 +190,11 @@ def test_startup_records_conservative_recovery_outcomes(database_url: str) -> No
             ("uncertain", "blocked_uncertain_action"),
             ("valid", "stopped_no_replay"),
         ):
-            report = client.get(f"/api/v1/runs/{run_ids[name]}/recovery", headers=_headers())
+            report = client.get(f"/api/v1/runs/{run_ids[name]}/recovery")
             assert report.status_code == 200
             assert report.json()["decisions"][0]["outcome"] == expected
             assert report.json()["checkpoints"][0]["reason"] == "failed"
-            assert client.get(f"/api/v1/runs/{run_ids[name]}", headers=_headers()).json()["status"] == "failed"
+            assert client.get(f"/api/v1/runs/{run_ids[name]}").json()["status"] == "failed"
 
 
 def test_startup_survives_unreadable_checkpoint_json(database_url: str, database_path: Path) -> None:
@@ -249,8 +246,10 @@ def test_startup_survives_unreadable_checkpoint_json(database_url: str, database
         connection.execute("UPDATE run_checkpoints SET state = ? WHERE run_id = ?", ("not JSON", run_id))
         connection.commit()
 
-    with TestClient(create_app(_settings(database_url), DeterministicGraphRuntime())) as client:
-        report = client.get(f"/api/v1/runs/{run_id}/recovery", headers=_headers())
+    settings = _settings(database_url)
+    with TestClient(create_app(settings, DeterministicGraphRuntime())) as client:
+        seed_test_session(client, settings)
+        report = client.get(f"/api/v1/runs/{run_id}/recovery")
 
     assert report.status_code == 200
     assert report.json()["decisions"][0]["outcome"] == "blocked_corrupt_checkpoint"
@@ -308,8 +307,10 @@ def test_startup_and_report_survive_corrupt_checkpoint_metadata(database_url: st
         )
         connection.commit()
 
-    with TestClient(create_app(_settings(database_url), DeterministicGraphRuntime())) as client:
-        report = client.get(f"/api/v1/runs/{run_id}/recovery", headers=_headers())
+    settings = _settings(database_url)
+    with TestClient(create_app(settings, DeterministicGraphRuntime())) as client:
+        seed_test_session(client, settings)
+        report = client.get(f"/api/v1/runs/{run_id}/recovery")
 
     assert report.status_code == 200
     assert report.json()["decisions"][0]["outcome"] == "blocked_corrupt_checkpoint"
@@ -321,9 +322,10 @@ def test_startup_and_report_survive_corrupt_checkpoint_metadata(database_url: st
 def test_recovery_report_requires_read_permission(recovery_client: TestClient) -> None:
     agent = _create_agent(recovery_client)
     run = recovery_client.post(
-        f"/api/v1/agents/{agent['id']}/runs", headers=_headers(), json={"input_text": "authorization"}
+        f"/api/v1/agents/{agent['id']}/runs", json={"input_text": "authorization"}
     ).json()
 
+    recovery_client.cookies.clear()
     denied = recovery_client.get(f"/api/v1/runs/{run['id']}/recovery")
     assert denied.status_code == 403
 
@@ -331,7 +333,7 @@ def test_recovery_report_requires_read_permission(recovery_client: TestClient) -
 def test_controlled_tool_writes_confirmed_action_ledger_entry(recovery_client: TestClient) -> None:
     agent = _create_agent(recovery_client)
     run = recovery_client.post(
-        f"/api/v1/agents/{agent['id']}/runs", headers=_headers(), json={"input_text": "tool ledger"}
+        f"/api/v1/agents/{agent['id']}/runs", json={"input_text": "tool ledger"}
     ).json()
     service = cast(ToolService, cast(Any, recovery_client.app).state.tool_service)
     portal = cast(Any, recovery_client).portal
@@ -340,7 +342,7 @@ def test_controlled_tool_writes_confirmed_action_ledger_entry(recovery_client: T
         return await service.execute(run_id=UUID(str(run["id"])), tool_id="system.current_time", arguments={})
 
     result = portal.call(execute_tool)
-    report = recovery_client.get(f"/api/v1/runs/{run['id']}/recovery", headers=_headers()).json()
+    report = recovery_client.get(f"/api/v1/runs/{run['id']}/recovery").json()
 
     assert cast(Any, result).status.value == "succeeded"
     assert len(report["actions"]) == 1

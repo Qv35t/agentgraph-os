@@ -1,6 +1,5 @@
 # ruff: noqa: E501
 
-from base64 import urlsafe_b64decode
 from typing import cast
 from uuid import uuid4
 
@@ -20,8 +19,15 @@ from agentgraph.domain.entities import Agent, AgentRun, RunTreeNode
 from agentgraph.domain.remote import ApprovalRequest, Permission, Principal, RuntimeCommand, RuntimeCommandType
 from agentgraph.models.contracts import ProviderStatus
 from agentgraph.runtime.events import RuntimeEventBus, event_json
+from agentgraph.services.auth import AuthenticationError, AuthService
 from agentgraph.services.errors import AgentNotFoundError, LifecycleConflictError, OrchestrationError, RunNotFoundError
-from agentgraph.services.remote import ApprovalService, AuthorizationError, AuthorizationService, RemoteCommandService
+from agentgraph.services.remote import (
+    ApprovalService,
+    AuthorizationError,
+    AuthorizationService,
+    RemoteCommandService,
+    set_request_principal,
+)
 
 remote_router = APIRouter()
 
@@ -352,21 +358,28 @@ async def reject(
 
 @remote_router.websocket("/ws/events")
 async def event_socket(websocket: WebSocket, run_id: str | None = None) -> None:
-    identity, subprotocol = _socket_identity(websocket)
     authorization = cast(AuthorizationService, websocket.app.state.authorization)
     try:
-        principal = authorization.principal(identity)
+        auth_service = cast(AuthService, websocket.app.state.auth_service)
+        session_principal = await auth_service.principal_from_session_token(
+            websocket.cookies.get(websocket.app.state.settings.session_cookie_name)
+        )
+        token = set_request_principal(Principal(session_principal.user_id, session_principal.permissions))
+        principal = authorization.principal(None)
         authorization.require(principal, Permission.READ)
-    except AuthorizationError:
+    except (AuthenticationError, AuthorizationError):
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
-    await websocket.accept(subprotocol=subprotocol)
-    bus = cast(RuntimeEventBus, websocket.app.state.event_bus)
     try:
-        async for event in bus.subscribe(run_id):
-            await websocket.send_json(event_json(event))
-    except WebSocketDisconnect:
-        return
+        await websocket.accept()
+        bus = cast(RuntimeEventBus, websocket.app.state.event_bus)
+        try:
+            async for event in bus.subscribe(run_id):
+                await websocket.send_json(event_json(event))
+        except WebSocketDisconnect:
+            return
+    finally:
+        token.var.reset(token)
 
 
 async def _approval_decision(request: Request, approval_id: str, approved: bool) -> dict[str, object]:
@@ -402,19 +415,3 @@ def _orchestration_http(error: OrchestrationError) -> HTTPException:
         status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         detail={"error": {"code": error.code, "message": str(error), "details": {}}},
     )
-
-
-def _socket_identity(websocket: WebSocket) -> tuple[str | None, str | None]:
-    header_identity = websocket.headers.get("x-agentgraph-identity")
-    if header_identity is not None:
-        return header_identity, None
-    for subprotocol in websocket.scope.get("subprotocols", []):
-        if not subprotocol.startswith("agentgraph.identity."):
-            continue
-        encoded = subprotocol.removeprefix("agentgraph.identity.")
-        try:
-            padding = "=" * (-len(encoded) % 4)
-            return urlsafe_b64decode(encoded + padding).decode("utf-8"), subprotocol
-        except (UnicodeDecodeError, ValueError):
-            return None, None
-    return None, None

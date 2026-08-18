@@ -2,9 +2,12 @@ import { z } from "zod";
 import {
   agentSchema,
   approvalSchema,
+  authSessionSchema,
   errorSchema,
   eventSchema,
+  grantSchema,
   healthSchema,
+  lockdownSchema,
   projectSchema,
   providerSchema,
   runSchema,
@@ -39,23 +42,45 @@ import {
   nodeSchema,
   probeResultSchema,
   recoveryReportSchema,
+  securityAuditSchema,
+  securityDeviceSchema,
+  totpEnrollmentSchema,
   toolInvocationSchema,
+  vaultCredentialSchema,
+  webAuthnOptionsSchema,
 } from "./contracts";
 
 const apiBaseUrl = import.meta.env.VITE_AGENTGRAPH_API_URL || "/api/v1";
-const identity = import.meta.env.VITE_AGENTGRAPH_IDENTITY || "local-user";
+let csrfToken: string | null = null;
+const authenticationFailureListeners = new Set<() => void>();
 
 export class ApiError extends Error {
-  constructor(readonly code: string, message: string, readonly details: Record<string, unknown> = {}) {
+  constructor(readonly code: string, message: string, readonly details: Record<string, unknown> = {}, readonly status?: number) {
     super(message);
   }
 }
 
+export function setCsrfToken(token: string | null): void { csrfToken = token; }
+export function onAuthenticationFailure(listener: () => void): () => void {
+  authenticationFailureListeners.add(listener);
+  return () => authenticationFailureListeners.delete(listener);
+}
+
+function rememberSession(session: import("./contracts").AuthSession): import("./contracts").AuthSession {
+  setCsrfToken(session.csrf_token);
+  return session;
+}
+
 async function request<T>(path: string, schema: z.ZodType<T>, init?: RequestInit): Promise<T> {
   try {
+    const method = init?.method?.toUpperCase() ?? "GET";
+    const headers = new Headers(init?.headers);
+    if (!(init?.body instanceof FormData)) headers.set("Content-Type", "application/json");
+    if (!["GET", "HEAD", "OPTIONS"].includes(method) && csrfToken) headers.set("X-AgentGraph-CSRF", csrfToken);
     const response = await fetch(`${apiBaseUrl}${path}`, {
       ...init,
-      headers: { ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }), "X-AgentGraph-Identity": identity, ...init?.headers },
+      credentials: "include",
+      headers,
       signal: AbortSignal.timeout(10_000),
     });
     if (response.status === 204) return schema.parse(undefined);
@@ -65,7 +90,8 @@ async function request<T>(path: string, schema: z.ZodType<T>, init?: RequestInit
       const error = failure.success
         ? failure.data.error
         : { code: "HTTP_ERROR", message: `Request failed (${response.status})`, details: {} };
-      throw new ApiError(error.code, error.message, error.details);
+      if (response.status === 401) authenticationFailureListeners.forEach((listener) => listener());
+      throw new ApiError(error.code, error.message, error.details, response.status);
     }
     return schema.parse(payload);
   } catch (error) {
@@ -75,6 +101,23 @@ async function request<T>(path: string, schema: z.ZodType<T>, init?: RequestInit
 }
 
 export const api = {
+  session: () => request("/auth/session", authSessionSchema).then(rememberSession),
+  bootstrap: (payload: { username: string; bootstrap_secret: string; device_name: string }) =>
+    request("/auth/bootstrap", webAuthnOptionsSchema, { method: "POST", body: JSON.stringify(payload) }),
+  passkeyRegistrationOptions: (deviceName: string) =>
+    request("/auth/passkeys/registration/options", webAuthnOptionsSchema, { method: "POST", body: JSON.stringify({ device_name: deviceName }) }),
+  passkeyRegistrationVerify: (payload: { challenge_id: string; credential: Record<string, unknown> }) =>
+    request("/auth/passkeys/registration/verify", authSessionSchema, { method: "POST", body: JSON.stringify(payload) }).then(rememberSession),
+  passkeyAuthenticationOptions: (username: string) =>
+    request("/auth/passkeys/authentication/options", webAuthnOptionsSchema, { method: "POST", body: JSON.stringify({ username }) }),
+  passkeyAuthenticationVerify: (payload: { challenge_id: string; credential: Record<string, unknown> }) =>
+    request("/auth/passkeys/authentication/verify", authSessionSchema, { method: "POST", body: JSON.stringify(payload) }).then(rememberSession),
+  logout: () => request<void>("/auth/logout", z.void(), { method: "POST" }).then(() => setCsrfToken(null)),
+  beginTotpEnrollment: () => request("/auth/totp/enrollment", totpEnrollmentSchema, { method: "POST" }),
+  confirmTotpEnrollment: (secret: string, code: string) =>
+    request<void>("/auth/totp/confirm", z.void(), { method: "POST", body: JSON.stringify({ secret, code }) }),
+  verifyTotp: (code: string) =>
+    request("/auth/totp/verify", authSessionSchema, { method: "POST", body: JSON.stringify({ code }) }).then(rememberSession),
   health: () => request("/health", healthSchema),
   system: () => request<SystemInfo>("/system", systemSchema),
   projects: () => request<Project[]>("/projects", z.array(projectSchema)),
@@ -116,6 +159,78 @@ export const api = {
   enableNode: (id: string) => request<NodeInfo>(`/nodes/${id}/enable`, nodeSchema, { method: "POST" }),
   disableNode: (id: string) => request<NodeInfo>(`/nodes/${id}/disable`, nodeSchema, { method: "POST" }),
   probeNode: (id: string) => request<ProbeResult>(`/nodes/${id}/probe`, probeResultSchema, { method: "POST" }),
+  devices: () => request("/security/devices", z.array(securityDeviceSchema)),
+  renameDevice: (id: string, displayName: string) => request(`/security/devices/${id}`, securityDeviceSchema, { method: "PATCH", body: JSON.stringify({ display_name: displayName }) }),
+  trustDevice: (id: string) => request(`/security/devices/${id}/trust`, securityDeviceSchema, { method: "POST" }),
+  revokeDevice: (id: string) => request(`/security/devices/${id}/revoke`, securityDeviceSchema, { method: "POST" }),
+  grants: () => request("/security/grants", z.array(grantSchema)),
+  revokeGrant: (id: string) => request(`/security/grants/${id}/revoke`, grantSchema, { method: "POST" }),
+  lockdown: () => request("/security/lockdown", lockdownSchema),
+  activateLockdown: () => request("/security/lockdown/activate", lockdownSchema, { method: "POST" }),
+  deactivateLockdown: () => request("/security/lockdown/deactivate", lockdownSchema, { method: "POST" }),
+  securityAudit: () => request("/security/audit", z.array(securityAuditSchema)),
+  vaultCredentials: () => request("/security/vault", z.array(vaultCredentialSchema)),
+  createVaultCredential: (payload: { name: string; credential_type: string; secret: string }) =>
+    request("/security/vault", vaultCredentialSchema, { method: "POST", body: JSON.stringify(payload) }),
+  replaceVaultCredential: (id: string, secret: string) =>
+    request(`/security/vault/${id}`, vaultCredentialSchema, { method: "PUT", body: JSON.stringify({ secret }) }),
+  revokeVaultCredential: (id: string) => request(`/security/vault/${id}/revoke`, vaultCredentialSchema, { method: "POST" }),
 };
 
-export const eventSocketConfig = { identity, eventSchema };
+export const eventSocketConfig = { eventSchema };
+
+type JsonWebAuthnCredential = Record<string, unknown>;
+
+function base64UrlToBytes(value: string): Uint8Array {
+  const base64 = value.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+}
+
+function bytesToBase64Url(value: ArrayBuffer): string {
+  return btoa(String.fromCharCode(...new Uint8Array(value))).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+}
+
+function credentialJson(credential: PublicKeyCredential): JsonWebAuthnCredential {
+  const response = credential.response;
+  const base = {
+    id: credential.id,
+    rawId: bytesToBase64Url(credential.rawId),
+    type: credential.type,
+    clientExtensionResults: credential.getClientExtensionResults(),
+  };
+  if (response instanceof AuthenticatorAttestationResponse) {
+    return { ...base, response: { clientDataJSON: bytesToBase64Url(response.clientDataJSON), attestationObject: bytesToBase64Url(response.attestationObject), transports: response.getTransports?.() } };
+  }
+  if (response instanceof AuthenticatorAssertionResponse) {
+    return { ...base, response: { clientDataJSON: bytesToBase64Url(response.clientDataJSON), authenticatorData: bytesToBase64Url(response.authenticatorData), signature: bytesToBase64Url(response.signature), userHandle: response.userHandle ? bytesToBase64Url(response.userHandle) : null } };
+  }
+  throw new ApiError("WEBAUTHN_UNSUPPORTED", "The browser returned an unsupported passkey response.");
+}
+
+function publicKeyOptions(options: Record<string, unknown>, operation: "create" | "get"): PublicKeyCredentialCreationOptions | PublicKeyCredentialRequestOptions {
+  const source = options as Record<string, unknown>;
+  if (typeof source.challenge !== "string") throw new ApiError("WEBAUTHN_OPTIONS", "The server returned invalid passkey options.");
+  const credentials = (items: unknown) => Array.isArray(items)
+    ? items.map((item) => ({ ...(item as PublicKeyCredentialDescriptor), id: base64UrlToBytes(String((item as Record<string, unknown>).id)) }))
+    : undefined;
+  if (operation === "create") {
+    const user = source.user as Record<string, unknown> | undefined;
+    if (!user || typeof user.id !== "string" || !Array.isArray(source.pubKeyCredParams)) throw new ApiError("WEBAUTHN_OPTIONS", "The server returned invalid passkey options.");
+    return { ...source, challenge: base64UrlToBytes(source.challenge), user: { ...user, id: base64UrlToBytes(user.id) }, excludeCredentials: credentials(source.excludeCredentials) } as unknown as PublicKeyCredentialCreationOptions;
+  }
+  return { ...source, challenge: base64UrlToBytes(source.challenge), allowCredentials: credentials(source.allowCredentials) } as PublicKeyCredentialRequestOptions;
+}
+
+export async function createPasskeyCredential(options: Record<string, unknown>): Promise<JsonWebAuthnCredential> {
+  if (!window.PublicKeyCredential || !navigator.credentials) throw new ApiError("WEBAUTHN_UNAVAILABLE", "This browser does not support passkeys.");
+  const credential = await navigator.credentials.create({ publicKey: publicKeyOptions(options, "create") as PublicKeyCredentialCreationOptions });
+  if (!(credential instanceof PublicKeyCredential)) throw new ApiError("WEBAUTHN_CANCELLED", "Passkey registration was cancelled.");
+  return credentialJson(credential);
+}
+
+export async function getPasskeyCredential(options: Record<string, unknown>): Promise<JsonWebAuthnCredential> {
+  if (!window.PublicKeyCredential || !navigator.credentials) throw new ApiError("WEBAUTHN_UNAVAILABLE", "This browser does not support passkeys.");
+  const credential = await navigator.credentials.get({ publicKey: publicKeyOptions(options, "get") as PublicKeyCredentialRequestOptions });
+  if (!(credential instanceof PublicKeyCredential)) throw new ApiError("WEBAUTHN_CANCELLED", "Passkey sign-in was cancelled.");
+  return credentialJson(credential);
+}

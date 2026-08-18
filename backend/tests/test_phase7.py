@@ -9,7 +9,7 @@ from agentgraph.models.contracts import ModelRequest, ModelResponse, ProviderSta
 from agentgraph.models.router import ModelProvider, ModelRouter
 from agentgraph.settings import Settings
 
-from .conftest import upgrade_database
+from .conftest import seed_test_session, upgrade_database
 
 
 def _settings(database_url: str) -> Settings:
@@ -21,14 +21,10 @@ def _settings(database_url: str) -> Settings:
     )
 
 
-def _headers() -> dict[str, str]:
-    return {"x-agentgraph-identity": "operator"}
-
-
 def _wait(client: TestClient, run_id: str) -> dict[str, object]:
     deadline = time.monotonic() + 4
     while time.monotonic() < deadline:
-        body = cast(dict[str, object], client.get(f"/api/v1/runs/{run_id}", headers=_headers()).json())
+        body = cast(dict[str, object], client.get(f"/api/v1/runs/{run_id}").json())
         if body["status"] in {"succeeded", "failed", "cancelled"}:
             return body
         time.sleep(0.01)
@@ -86,7 +82,9 @@ class RecordingProvider(ModelProvider):
 def test_team_graph_rejects_invalid_refs_cycles_and_worker_limit(database_url: str) -> None:
     upgrade_database(database_url)
     router = ModelRouter({"ollama": RecordingProvider()}, "ollama://test")
-    with TestClient(create_app(_settings(database_url), configured_router=router)) as client:
+    settings = _settings(database_url)
+    with TestClient(create_app(settings, configured_router=router)) as client:
+        seed_test_session(client, settings)
         missing = _team(
             [
                 {
@@ -98,11 +96,11 @@ def test_team_graph_rejects_invalid_refs_cycles_and_worker_limit(database_url: s
                 }
             ]
         )
-        response = client.post("/api/v1/agents", headers=_headers(), json=missing)
+        response = client.post("/api/v1/agents", json=missing)
         assert response.status_code == 422
         assert response.json()["error"]["code"] == "MISSING_AGENT_REFERENCE"
 
-        created = client.post("/api/v1/agents", headers=_headers(), json=_worker("Worker")).json()
+        created = client.post("/api/v1/agents", json=_worker("Worker")).json()
         worker_id = created["id"]
         cycle = _team(
             [
@@ -111,19 +109,20 @@ def test_team_graph_rejects_invalid_refs_cycles_and_worker_limit(database_url: s
             ],
             [{"id": "ab", "source": "a", "target": "b"}, {"id": "ba", "source": "b", "target": "a"}],
         )
-        assert client.post("/api/v1/agents", headers=_headers(), json=cycle).status_code == 422
+        assert client.post("/api/v1/agents", json=cycle).status_code == 422
 
 
 def test_team_runs_children_in_parallel_persists_tree_and_authorizes_read(database_url: str) -> None:
     upgrade_database(database_url)
     provider = RecordingProvider()
     router = ModelRouter({"ollama": provider}, "ollama://test")
-    with TestClient(create_app(_settings(database_url), configured_router=router)) as client:
-        first = client.post("/api/v1/agents", headers=_headers(), json=_worker("Research")).json()
-        second = client.post("/api/v1/agents", headers=_headers(), json=_worker("Review")).json()
+    settings = _settings(database_url)
+    with TestClient(create_app(settings, configured_router=router)) as client:
+        seed_test_session(client, settings)
+        first = client.post("/api/v1/agents", json=_worker("Research")).json()
+        second = client.post("/api/v1/agents", json=_worker("Review")).json()
         team = client.post(
             "/api/v1/agents",
-            headers=_headers(),
             json=_team(
                 [
                     {
@@ -146,14 +145,15 @@ def test_team_runs_children_in_parallel_persists_tree_and_authorizes_read(databa
             ),
         ).json()
         started = client.post(
-            f"/api/v1/agents/{team['id']}/runs", headers=_headers(), json={"input_text": "task"}
+            f"/api/v1/agents/{team['id']}/runs", json={"input_text": "task"}
         ).json()
         assert _wait(client, started["id"])["status"] == "succeeded"
-        tree = client.get(f"/api/v1/runs/{started['id']}/tree", headers=_headers())
+        tree = client.get(f"/api/v1/runs/{started['id']}/tree")
         assert tree.status_code == 200
         assert {item["node_id"] for item in tree.json()["children"]} == {"research", "review"}
         assert all(item["run"]["status"] == "succeeded" for item in tree.json()["children"])
         assert provider.maximum == 2
+        client.cookies.clear()
         assert client.get(f"/api/v1/runs/{started['id']}/tree").status_code == 403
 
 
@@ -161,12 +161,13 @@ def test_team_runs_dependencies_sequentially_and_passes_delimited_context(databa
     upgrade_database(database_url)
     provider = RecordingProvider()
     router = ModelRouter({"ollama": provider}, "ollama://test")
-    with TestClient(create_app(_settings(database_url), configured_router=router)) as client:
-        first = client.post("/api/v1/agents", headers=_headers(), json=_worker("First")).json()
-        second = client.post("/api/v1/agents", headers=_headers(), json=_worker("Second")).json()
+    settings = _settings(database_url)
+    with TestClient(create_app(settings, configured_router=router)) as client:
+        seed_test_session(client, settings)
+        first = client.post("/api/v1/agents", json=_worker("First")).json()
+        second = client.post("/api/v1/agents", json=_worker("Second")).json()
         team = client.post(
             "/api/v1/agents",
-            headers=_headers(),
             json=_team(
                 [
                     {"id": "first", "type": "agent-ref", "label": "First", "position": [0, 0], "agent_id": first["id"]},
@@ -182,7 +183,7 @@ def test_team_runs_dependencies_sequentially_and_passes_delimited_context(databa
             ),
         ).json()
         started = client.post(
-            f"/api/v1/agents/{team['id']}/runs", headers=_headers(), json={"input_text": "task"}
+            f"/api/v1/agents/{team['id']}/runs", json={"input_text": "task"}
         ).json()
         assert _wait(client, started["id"])["output_text"] == "synthesis"
         assert any("<agentgraph_upstream_results>" in request for request in provider.requests)
@@ -200,11 +201,12 @@ def test_stopping_team_cancels_live_children(database_url: str) -> None:
 
     upgrade_database(database_url)
     router = ModelRouter({"ollama": SlowProvider()}, "ollama://test")
-    with TestClient(create_app(_settings(database_url), configured_router=router)) as client:
-        worker = client.post("/api/v1/agents", headers=_headers(), json=_worker("Slow")).json()
+    settings = _settings(database_url)
+    with TestClient(create_app(settings, configured_router=router)) as client:
+        seed_test_session(client, settings)
+        worker = client.post("/api/v1/agents", json=_worker("Slow")).json()
         team = client.post(
             "/api/v1/agents",
-            headers=_headers(),
             json=_team(
                 [
                     {
@@ -218,14 +220,14 @@ def test_stopping_team_cancels_live_children(database_url: str) -> None:
             ),
         ).json()
         started = client.post(
-            f"/api/v1/agents/{team['id']}/runs", headers=_headers(), json={"input_text": "cancel"}
+            f"/api/v1/agents/{team['id']}/runs", json={"input_text": "cancel"}
         ).json()
         deadline = time.monotonic() + 1
         while time.monotonic() < deadline:
-            if client.get(f"/api/v1/runs/{started['id']}/tree", headers=_headers()).json()["children"]:
+            if client.get(f"/api/v1/runs/{started['id']}/tree").json()["children"]:
                 break
             time.sleep(0.01)
-        stopped = client.post(f"/api/v1/runs/{started['id']}/stop", headers=_headers())
+        stopped = client.post(f"/api/v1/runs/{started['id']}/stop")
         assert stopped.json()["status"] == "cancelled"
-        tree = client.get(f"/api/v1/runs/{started['id']}/tree", headers=_headers()).json()
+        tree = client.get(f"/api/v1/runs/{started['id']}/tree").json()
         assert tree["children"][0]["run"]["status"] == "cancelled"

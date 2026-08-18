@@ -11,6 +11,8 @@ from agentgraph.models.router import ModelProvider, ModelRouter
 from agentgraph.runtime.graph import DeterministicGraphRuntime
 from agentgraph.settings import Settings
 
+from .conftest import seed_test_session
+
 
 class VisionProvider(ModelProvider):
     provider_id = "ollama"
@@ -30,10 +32,6 @@ def _png() -> bytes:
     return buffer.getvalue()
 
 
-def _headers() -> dict[str, str]:
-    return {"x-agentgraph-identity": "vision-user"}
-
-
 def test_vision_upload_analysis_and_folder_policy(settings: Settings, tmp_path: Path) -> None:
     configured = settings.model_copy(
         update={
@@ -46,32 +44,33 @@ def test_vision_upload_analysis_and_folder_policy(settings: Settings, tmp_path: 
     )
     router = ModelRouter({"ollama": VisionProvider()}, "ollama://vision-model")
     with TestClient(create_app(configured, DeterministicGraphRuntime(), router)) as client:
+        seed_test_session(client, configured)
         uploaded = client.post(
-            "/api/v1/vision/assets", headers=_headers(), files={"file": ("sample.png", _png(), "image/png")}
+            "/api/v1/vision/assets", files={"file": ("sample.png", _png(), "image/png")}
         )
         assert uploaded.status_code == 201
         asset_id = uploaded.json()["id"]
 
         invalid = client.post(
-            "/api/v1/vision/assets", headers=_headers(), files={"file": ("bad.png", b"not-image", "image/png")}
+            "/api/v1/vision/assets", files={"file": ("bad.png", b"not-image", "image/png")}
         )
         assert invalid.status_code == 400
         assert invalid.json()["error"]["code"] == "vision_invalid_image"
 
-        analysis = client.post(f"/api/v1/vision/assets/{asset_id}/analyses", headers=_headers(), json={"mode": "ocr"})
+        analysis = client.post(f"/api/v1/vision/assets/{asset_id}/analyses", json={"mode": "ocr"})
         assert analysis.status_code == 202
         analysis_id = analysis.json()["id"]
 
         deadline = time.monotonic() + 1
-        result = client.get(f"/api/v1/vision/analyses/{analysis_id}", headers=_headers())
+        result = client.get(f"/api/v1/vision/analyses/{analysis_id}")
         while result.json()["status"] in {"queued", "running"} and time.monotonic() < deadline:
             time.sleep(0.01)
-            result = client.get(f"/api/v1/vision/analyses/{analysis_id}", headers=_headers())
+            result = client.get(f"/api/v1/vision/analyses/{analysis_id}")
         assert result.status_code == 200
         assert result.json()["status"] == "completed"
         assert result.json()["ocr_text"] == "visible text"
 
         forbidden = client.post(
-            "/api/v1/vision/folders", headers=_headers(), json={"display_name": "Bad", "root": "/etc"}
+            "/api/v1/vision/folders", json={"display_name": "Bad", "root": "/etc"}
         )
         assert forbidden.status_code == 403

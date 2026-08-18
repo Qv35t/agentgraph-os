@@ -21,9 +21,7 @@ from agentgraph.services.nodes import (
 from agentgraph.settings import Settings
 from agentgraph.worker import load_node_id, safe_capabilities
 
-
-def _headers(identity: str) -> dict[str, str]:
-    return {"x-agentgraph-identity": identity}
+from .conftest import seed_test_session
 
 
 def _hello(node_id: str = "node_phase9_test") -> WorkerHello:
@@ -56,6 +54,7 @@ def distributed_client(settings: Settings) -> Generator[TestClient, None, None]:
         "ollama://qwen3-4b-nothink:latest",
     )
     with TestClient(create_app(configured, DeterministicGraphRuntime(), router)) as test_client:
+        seed_test_session(test_client, configured)
         yield test_client
 
 
@@ -116,7 +115,7 @@ def test_worker_websocket_enrollment_heartbeat_and_reconnect_identity(distribute
     ) as socket:
         socket.send_json(hello.model_dump(mode="json"))
         assert socket.receive_json()["node_id"] == hello.node_id
-    nodes = distributed_client.get("/api/v1/nodes", headers=_headers("reader"))
+    nodes = distributed_client.get("/api/v1/nodes")
     assert nodes.status_code == 200
     workers = [node for node in nodes.json() if node["role"] == "worker"]
     assert len(workers) == 1
@@ -149,11 +148,13 @@ def test_node_service_dispatch_duplicate_timeout_and_disconnect(distributed_clie
 
 def test_node_api_permissions_disable_and_persistence(distributed_client: TestClient) -> None:
     _, _, hello = _enroll(distributed_client)
-    denied = distributed_client.post(f"/api/v1/nodes/{hello.node_id}/disable", headers=_headers("reader"))
-    denied_probe = distributed_client.post(f"/api/v1/nodes/{hello.node_id}/probe", headers=_headers("reader"))
-    disabled = distributed_client.post(f"/api/v1/nodes/{hello.node_id}/disable", headers=_headers("operator"))
-    probe = distributed_client.post(f"/api/v1/nodes/{hello.node_id}/probe", headers=_headers("operator"))
-    enabled = distributed_client.post(f"/api/v1/nodes/{hello.node_id}/enable", headers=_headers("operator"))
+    distributed_client.cookies.clear()
+    denied = distributed_client.post(f"/api/v1/nodes/{hello.node_id}/disable")
+    denied_probe = distributed_client.post(f"/api/v1/nodes/{hello.node_id}/probe")
+    seed_test_session(distributed_client, cast(Settings, cast(Any, distributed_client).app.state.settings))
+    disabled = distributed_client.post(f"/api/v1/nodes/{hello.node_id}/disable")
+    probe = distributed_client.post(f"/api/v1/nodes/{hello.node_id}/probe")
+    enabled = distributed_client.post(f"/api/v1/nodes/{hello.node_id}/enable")
 
     assert denied.status_code == 403
     assert denied_probe.status_code == 403
@@ -161,7 +162,7 @@ def test_node_api_permissions_disable_and_persistence(distributed_client: TestCl
     assert probe.status_code == 409
     assert probe.json()["error"]["code"] == "NODE_DISABLED"
     assert enabled.json()["enabled"] is True
-    assert distributed_client.get(f"/api/v1/nodes/{hello.node_id}", headers=_headers("reader")).status_code == 200
+    assert distributed_client.get(f"/api/v1/nodes/{hello.node_id}").status_code == 200
 
 
 def test_node_identity_and_safe_capabilities_are_bounded(tmp_path: Path) -> None:

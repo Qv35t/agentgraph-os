@@ -17,11 +17,7 @@ from agentgraph.services.remote import ApprovalService
 from agentgraph.services.tools import DesktopLauncher, ToolService
 from agentgraph.settings import Settings
 
-from .conftest import upgrade_database
-
-
-def _headers() -> dict[str, str]:
-    return {"x-agentgraph-identity": "operator"}
+from .conftest import seed_test_session, upgrade_database
 
 
 def _remote_settings(database_url: str) -> Settings:
@@ -35,7 +31,7 @@ def _remote_settings(database_url: str) -> Settings:
 def _wait_for_run(client: TestClient, run_id: str) -> dict[str, object]:
     deadline = time.monotonic() + 3
     while time.monotonic() < deadline:
-        response = client.get(f"/api/v1/runs/{run_id}", headers=_headers())
+        response = client.get(f"/api/v1/runs/{run_id}")
         body = cast(dict[str, object], response.json())
         if body["status"] in {"succeeded", "failed", "cancelled"}:
             return body
@@ -56,13 +52,14 @@ def test_memory_api_scopes_and_persists_run_usage(database_url: str) -> None:
 
     upgrade_database(database_url)
     router = ModelRouter({"ollama": ResponseProvider()}, "ollama://qwen3-4b-nothink:latest")
-    with TestClient(create_app(_remote_settings(database_url), configured_router=router)) as client:
-        lexi = client.post("/api/v1/lexi/bootstrap", headers=_headers())
+    configured = _remote_settings(database_url)
+    with TestClient(create_app(configured, configured_router=router)) as client:
+        seed_test_session(client, configured)
+        lexi = client.post("/api/v1/lexi/bootstrap")
         assert lexi.status_code == 201
         agent_id = lexi.json()["agent"]["id"]
         created = client.post(
             "/api/v1/memory",
-            headers=_headers(),
             json={
                 "agent_id": agent_id,
                 "kind": "fact",
@@ -73,17 +70,17 @@ def test_memory_api_scopes_and_persists_run_usage(database_url: str) -> None:
         assert created.status_code == 201
         memory_id = created.json()["id"]
 
-        started = client.post(f"/api/v1/agents/{agent_id}/runs", headers=_headers(), json={"input_text": "codename"})
+        started = client.post(f"/api/v1/agents/{agent_id}/runs", json={"input_text": "codename"})
         assert started.status_code == 202
         completed = _wait_for_run(client, started.json()["id"])
         assert completed["output_text"] == "Aurora-17"
 
-        usage = client.get(f"/api/v1/memory/runs/{started.json()['id']}", headers=_headers())
+        usage = client.get(f"/api/v1/memory/runs/{started.json()['id']}")
         assert usage.json() == [{"memory_id": memory_id, "rank": 1, "score": 1.0, "deleted": False}]
-        deleted = client.delete(f"/api/v1/memory/{memory_id}?agent_id={agent_id}", headers=_headers())
+        deleted = client.delete(f"/api/v1/memory/{memory_id}?agent_id={agent_id}")
         assert deleted.status_code == 204
-        assert client.get(f"/api/v1/memory?agent_id={agent_id}", headers=_headers()).json() == []
-        historical_usage = client.get(f"/api/v1/memory/runs/{started.json()['id']}", headers=_headers()).json()
+        assert client.get(f"/api/v1/memory?agent_id={agent_id}").json() == []
+        historical_usage = client.get(f"/api/v1/memory/runs/{started.json()['id']}").json()
         assert historical_usage[0]["deleted"] is True
 
 

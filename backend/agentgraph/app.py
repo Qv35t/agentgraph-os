@@ -1,20 +1,22 @@
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
+from agentgraph.api.auth import auth_router
 from agentgraph.api.lexi import lexi_router
 from agentgraph.api.memory import memory_router
 from agentgraph.api.nodes import node_router
 from agentgraph.api.recovery import recovery_router
 from agentgraph.api.remote import remote_router
-from agentgraph.api.routes import router
+from agentgraph.api.security import security_router
 from agentgraph.api.tools import tool_router
 from agentgraph.api.vision import vision_router
 from agentgraph.api.workers import worker_router
+from agentgraph.domain.remote import Principal
 from agentgraph.models.router import DisabledProvider, ModelProvider, ModelRouter
 from agentgraph.persistence.database import create_database_engine, create_session_factory
 from agentgraph.providers.ollama import OllamaProvider
@@ -26,13 +28,21 @@ from agentgraph.runtime.lexi import LexiGraphRuntime
 from agentgraph.runtime.registry import RunRegistry
 from agentgraph.runtime.selector import WorkflowRuntime
 from agentgraph.runtime.team import TeamGraphRuntime
+from agentgraph.services.auth import AuthenticationError, AuthService
 from agentgraph.services.lexi import LexiTemplateService
 from agentgraph.services.manager import AgentManager, AgentRuntime
 from agentgraph.services.memory import MemoryService
 from agentgraph.services.nodes import NodeService
 from agentgraph.services.recovery import RecoveryService
-from agentgraph.services.remote import ApprovalService, AuthorizationService, RemoteCommandService
+from agentgraph.services.remote import (
+    ApprovalService,
+    AuthorizationService,
+    RemoteCommandService,
+    set_request_principal,
+)
+from agentgraph.services.security import SecurityService
 from agentgraph.services.tools import ToolService
+from agentgraph.services.vault import MasterKeyStore, VaultService
 from agentgraph.services.vision import VisionService
 from agentgraph.settings import Settings
 
@@ -85,18 +95,23 @@ def create_app(
                 model_router = ModelRouter(providers, "ollama://qwen3-4b-nothink:latest")
             else:
                 model_router = configured_router
+            session_factory = create_session_factory(engine)
+            key_store = MasterKeyStore(runtime_settings.security_master_key_path)
+            auth_service = AuthService(session_factory, runtime_settings, key_store)
+            security_service = SecurityService(session_factory)
+            vault_service = VaultService(session_factory, runtime_settings, key_store)
             approvals = ApprovalService(event_bus)
-            recovery_service = RecoveryService(create_session_factory(engine), event_bus, runtime_settings)
-            memory_service = MemoryService(create_session_factory(engine), runtime_settings)
+            recovery_service = RecoveryService(session_factory, event_bus, runtime_settings)
+            memory_service = MemoryService(session_factory, runtime_settings)
             tool_service = ToolService(
-                create_session_factory(engine), approvals, event_bus, runtime_settings, recovery=recovery_service
+                session_factory, approvals, event_bus, runtime_settings, recovery=recovery_service
             )
             selected_runtime = runtime or WorkflowRuntime(
                 ModelGraphRuntime(model_router),
                 LexiGraphRuntime(model_router, memory_service, tool_service, runtime_settings),
             )
             manager = AgentManager(
-                create_session_factory(engine),
+                session_factory,
                 selected_runtime,
                 registry,
                 runtime_settings.runtime_delay_seconds,
@@ -116,7 +131,10 @@ def create_app(
                 runtime_settings.remote_control_enabled, runtime_settings.remote_control_policies
             )
             app.state.authorization = authorization
-            app.state.node_service = NodeService(create_session_factory(engine), event_bus, runtime_settings)
+            app.state.auth_service = auth_service
+            app.state.security_service = security_service
+            app.state.vault_service = vault_service
+            app.state.node_service = NodeService(session_factory, event_bus, runtime_settings)
             if runtime_settings.node_role.value == "core":
                 core_name = runtime_settings.node_name
                 if core_name == "AgentGraph Worker":
@@ -168,14 +186,57 @@ def create_app(
 
     app = FastAPI(title="AgentGraph OS", lifespan=lifespan)
 
+    @app.middleware("http")
+    async def authenticate_request(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+        auth_service = getattr(request.app.state, "auth_service", None)
+        principal = None
+        if isinstance(auth_service, AuthService):
+            try:
+                session_principal = await auth_service.principal_from_session_token(
+                    request.cookies.get(runtime_settings.session_cookie_name)
+                )
+                principal = session_principal
+            except AuthenticationError:
+                pass
+        token = set_request_principal(
+            None if principal is None else Principal(identity=principal.user_id, permissions=principal.permissions)
+        )
+        try:
+            if (
+                principal is not None
+                and isinstance(auth_service, AuthService)
+                and request.method not in {"GET", "HEAD", "OPTIONS"}
+                and request.url.path
+                not in {
+                    "/api/v1/auth/bootstrap",
+                    "/api/v1/auth/passkeys/authentication/options",
+                    "/api/v1/auth/passkeys/authentication/verify",
+                    "/api/v1/auth/passkeys/registration/verify",
+                }
+            ):
+                try:
+                    await auth_service.require_csrf(
+                        principal,
+                        request.headers.get("x-agentgraph-csrf"),
+                        request.headers.get("origin"),
+                    )
+                except AuthenticationError as error:
+                    return JSONResponse(
+                        status_code=403,
+                        content={"error": {"code": "CSRF_DENIED", "message": str(error), "details": {}}},
+                    )
+            return await call_next(request)
+        finally:
+            token.var.reset(token)
+
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, error: HTTPException) -> JSONResponse:
         if isinstance(error.detail, dict) and "error" in error.detail:
             return JSONResponse(status_code=error.status_code, content=error.detail, headers=error.headers)
         return JSONResponse(status_code=error.status_code, content={"detail": error.detail}, headers=error.headers)
 
-    if runtime_settings.legacy_api_enabled:
-        app.include_router(router)
+    app.include_router(auth_router)
+    app.include_router(security_router)
     app.include_router(remote_router)
     app.include_router(node_router)
     app.include_router(recovery_router)

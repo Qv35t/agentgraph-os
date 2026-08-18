@@ -123,6 +123,74 @@ export type RuntimeEvent = z.infer<typeof eventSchema>;
 
 export const healthSchema = z.object({ status: z.string() });
 
+export const authSessionSchema = z.object({
+  user_id: z.string(),
+  username: z.string(),
+  role: z.string(),
+  session_id: z.string(),
+  device_id: z.string(),
+  device_trust: z.string(),
+  authentication_strength: z.string(),
+  csrf_token: z.string(),
+});
+export type AuthSession = z.infer<typeof authSessionSchema>;
+
+export const webAuthnOptionsSchema = z.object({ challenge_id: z.string(), options: z.record(z.unknown()) });
+export type WebAuthnOptions = z.infer<typeof webAuthnOptionsSchema>;
+
+export const totpEnrollmentSchema = z.object({ secret: z.string(), otpauth_uri: z.string() });
+export type TotpEnrollment = z.infer<typeof totpEnrollmentSchema>;
+
+export const securityDeviceSchema = z.object({
+  id: z.string(),
+  display_name: z.string(),
+  trust: z.string(),
+  revoked_at: z.string().nullable(),
+  last_authenticated_at: z.string().nullable(),
+  created_at: z.string(),
+});
+export type SecurityDevice = z.infer<typeof securityDeviceSchema>;
+
+export const grantSchema = z.object({
+  id: z.string(),
+  subject: z.string(),
+  action: z.string(),
+  target: z.string().nullable(),
+  run_id: z.string().nullable(),
+  task_ref: z.string().nullable(),
+  status: z.string(),
+  expires_at: z.string(),
+  revoked_at: z.string().nullable(),
+  created_at: z.string(),
+});
+export type Grant = z.infer<typeof grantSchema>;
+
+export const lockdownSchema = z.object({ active: z.boolean(), updated_at: z.string() });
+export type Lockdown = z.infer<typeof lockdownSchema>;
+
+export const securityAuditSchema = z.object({
+  id: z.string(),
+  event_type: z.string(),
+  actor_user_id: z.string().nullable(),
+  session_id: z.string().nullable(),
+  device_id: z.string().nullable(),
+  target: z.string().nullable(),
+  result: z.string(),
+  metadata: z.record(z.unknown()),
+  created_at: z.string(),
+});
+export type SecurityAudit = z.infer<typeof securityAuditSchema>;
+
+export const vaultCredentialSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  credential_type: z.string(),
+  revoked_at: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export type VaultCredential = z.infer<typeof vaultCredentialSchema>;
+
 export const visionAssetSchema = z.object({ id: z.string(), filename: z.string(), mime_type: z.string(), size_bytes: z.number(), sha256: z.string(), source_type: z.string(), created_at: z.string() });
 export const visionAnalysisSchema = z.object({ id: z.string(), asset_id: z.string(), provider_id: z.string(), model_id: z.string(), mode: z.enum(["describe", "detailed", "ocr", "objects", "grounding", "ui", "custom"]), prompt: z.string().nullable(), status: z.enum(["queued", "running", "completed", "failed"]), raw_text: z.string().nullable(), description: z.string().nullable(), ocr_text: z.string().nullable(), structured_result: z.record(z.unknown()).nullable(), latency_ms: z.number().nullable(), error_code: z.string().nullable(), created_at: z.string(), completed_at: z.string().nullable() });
 export const visionFolderSchema = z.object({ id: z.string(), display_name: z.string(), enabled: z.boolean(), created_at: z.string() });

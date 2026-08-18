@@ -2,8 +2,8 @@ import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { addEdge, applyEdgeChanges, applyNodeChanges, Background, Controls, ReactFlow, type Connection, type Edge, type EdgeChange, type Node, type NodeChange, useEdgesState, useNodesState } from "@xyflow/react";
 import { AlertTriangle, ArrowRight, Check, CircleStop, ExternalLink, FolderKanban, Play, Plus, RefreshCw, Trash2, Wrench, X } from "lucide-react";
-import { api, ApiError } from "./api";
-import type { Agent, Approval, GraphDefinition, MemoryKind, NodeInfo, Provider, Run, RunTreeNode, RuntimeEvent, SystemInfo, VisionAnalysis, VisionAsset, VisionFolder } from "./contracts";
+import { api, ApiError, createPasskeyCredential, getPasskeyCredential } from "./api";
+import type { Agent, Approval, AuthSession, GraphDefinition, Grant, Lockdown, MemoryKind, NodeInfo, Provider, Run, RunTreeNode, RuntimeEvent, SecurityAudit, SecurityDevice, SystemInfo, TotpEnrollment, VaultCredential, VisionAnalysis, VisionAsset, VisionFolder } from "./contracts";
 import type { AppState } from "./App";
 import { useLanguage } from "./i18n";
 
@@ -40,6 +40,38 @@ function ErrorState({ error, retry }: { error: ApiError; retry: () => void }) { 
 function Status({ value }: { value: string }) { const { locale } = useLanguage(); return <span className={`status ${value}`}>{locale === "ru" ? russianStatuses[value] ?? value : value.replaceAll("_", " ")}</span>; }
 function time(value: string | null) { const locale = localStorage.getItem("agentgraph.locale") === "ru" ? "ru-RU" : undefined; return value ? new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(value)) : "-"; }
 function short(value: string | null) { return value ? value.slice(0, 8) : "-"; }
+
+export function AuthenticationPage({ onAuthenticated }: { onAuthenticated: (session: AuthSession) => void }) {
+  const [mode, setMode] = useState<"login" | "setup">("login");
+  const [username, setUsername] = useState("");
+  const [bootstrapSecret, setBootstrapSecret] = useState("");
+  const [deviceName, setDeviceName] = useState(() => navigator.userAgent.includes("Mobile") ? "Mobile browser" : "Local browser");
+  const [error, setError] = useState<ApiError | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function authenticate(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      if (mode === "setup") {
+        const options = await api.bootstrap({ username, bootstrap_secret: bootstrapSecret, device_name: deviceName });
+        const credential = await createPasskeyCredential(options.options);
+        onAuthenticated(await api.passkeyRegistrationVerify({ challenge_id: options.challenge_id, credential }));
+      } else {
+        const options = await api.passkeyAuthenticationOptions(username);
+        const credential = await getPasskeyCredential(options.options);
+        onAuthenticated(await api.passkeyAuthenticationVerify({ challenge_id: options.challenge_id, credential }));
+      }
+    } catch (reason) {
+      setError(reason instanceof ApiError ? reason : new ApiError("AUTH_FAILED", "Could not complete passkey authentication."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <main className="page"><div className="page-heading"><div><span className="eyebrow">LOCAL ACCESS</span><h2>{mode === "setup" ? "Set up the owner passkey" : "Sign in with a passkey"}</h2></div></div><section className="panel"><p className="muted">Authentication uses an HttpOnly local session cookie. This browser does not store an access token.</p><div className="dialog-actions"><button className={mode === "login" ? "secondary" : ""} type="button" onClick={() => setMode("login")}>Sign in</button><button className={mode === "setup" ? "secondary" : ""} type="button" onClick={() => setMode("setup")}>First-run setup</button></div><form className="run-form" onSubmit={authenticate}><label>Username<input required pattern="[A-Za-z0-9_.-]+" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username webauthn" /></label>{mode === "setup" && <label>One-time bootstrap secret<input required type="password" value={bootstrapSecret} onChange={(event) => setBootstrapSecret(event.target.value)} autoComplete="off" /></label>}<label>Device name<input required value={deviceName} onChange={(event) => setDeviceName(event.target.value)} /></label><button disabled={busy}>{busy ? "Waiting for passkey..." : mode === "setup" ? "Create owner passkey" : "Use passkey"}</button></form>{error && <div className="banner error"><b>{error.code}</b><span>{error.message}</span></div>}</section></main>;
+}
 
 export function EventTimeline({ events, runId }: { events: RuntimeEvent[]; runId?: string }) {
   const list = runId ? events.filter((event) => event.run_id === runId) : events;
@@ -173,6 +205,109 @@ function ProviderList({ providers, loading, error, retry, compact = false }: { p
 export function EventsPage({ state }: { state: AppState }) { const [type, setType] = useState(""); const [run, setRun] = useState(""); const [agent, setAgent] = useState(""); const events = state.events.filter((event) => (!type || event.type.includes(type)) && (!run || event.run_id?.includes(run)) && (!agent || event.agent_id?.includes(agent))); return <Page eyebrow="OBSERVABILITY" title="Events"><div className="filters"><label>Type<input value={type} onChange={(event) => setType(event.target.value)} placeholder="run.started" /></label><label>Run ID<input value={run} onChange={(event) => setRun(event.target.value)} /></label><label>Agent ID<input value={agent} onChange={(event) => setAgent(event.target.value)} /></label></div><Panel title={`${events.length} loaded events`}><EventTimeline events={events} /></Panel></Page>; }
 
 export function SettingsPage({ state }: { state: AppState }) { const system = useResource(api.system); return <Page eyebrow="CLIENT PREFERENCES" title="Settings"><Panel title="Server capabilities"><Resource result={system}>{(item: SystemInfo) => <dl className="metadata"><dt>Project</dt><dd><code>{item.project_id}</code></dd><dt>Remote control</dt><dd><Status value={item.remote_control ? "enabled" : "disabled"} /></dd><dt>Event connection</dt><dd><Status value={state.connection} /></dd></dl>}</Resource></Panel><Panel title="Visual preferences"><p className="muted">Dark technical workspace is the current local preference. Server settings and provider credentials are intentionally not editable from this browser.</p></Panel></Page>; }
+
+export function SecurityPage({ session, onSessionUpdated, onUnauthenticated }: { session: AuthSession; onSessionUpdated: (session: AuthSession) => void; onUnauthenticated: () => void }) {
+  const devices = useResource(api.devices);
+  const grants = useResource(api.grants);
+  const lockdown = useResource(api.lockdown);
+  const audit = useResource(api.securityAudit);
+  const vault = useResource(api.vaultCredentials);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [totp, setTotp] = useState<TotpEnrollment | null>(null);
+  const [totpCode, setTotpCode] = useState("");
+  const [vaultName, setVaultName] = useState("");
+  const [vaultType, setVaultType] = useState("token");
+  const [vaultSecret, setVaultSecret] = useState("");
+
+  async function action(name: string, operation: () => Promise<unknown>, refresh?: () => void) {
+    setBusy(name);
+    setError(null);
+    setNotice(null);
+    try {
+      await operation();
+      refresh?.();
+      setNotice("Security state updated.");
+    } catch (reason) {
+      setError(reason instanceof ApiError ? reason : new ApiError("SECURITY_ACTION_FAILED", "Could not update security state."));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function logout() {
+    await action("logout", async () => { await api.logout(); onUnauthenticated(); });
+  }
+
+  async function registerPasskey() {
+    await action("passkey", async () => {
+      const options = await api.passkeyRegistrationOptions("Additional passkey");
+      onSessionUpdated(await api.passkeyRegistrationVerify({ challenge_id: options.challenge_id, credential: await createPasskeyCredential(options.options) }));
+    });
+  }
+
+  async function beginTotp() {
+    setBusy("totp-enrollment");
+    setError(null);
+    try {
+      setTotp(await api.beginTotpEnrollment());
+    } catch (reason) {
+      setError(reason instanceof ApiError ? reason : new ApiError("TOTP_ENROLLMENT_FAILED", "Could not start MFA enrollment."));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function confirmTotp(event: FormEvent) {
+    event.preventDefault();
+    if (!totp) return;
+    await action("totp-confirm", async () => {
+      await api.confirmTotpEnrollment(totp.secret, totpCode);
+      setTotp(null);
+      setTotpCode("");
+    });
+  }
+
+  async function createVaultCredential(event: FormEvent) {
+    event.preventDefault();
+    await action("vault-create", async () => {
+      await api.createVaultCredential({ name: vaultName, credential_type: vaultType, secret: vaultSecret });
+      setVaultName("");
+      setVaultSecret("");
+    }, vault.refresh);
+  }
+
+  async function verifyTotp(event: FormEvent) {
+    event.preventDefault();
+    setBusy("totp-verify");
+    setError(null);
+    try {
+      onSessionUpdated(await api.verifyTotp(totpCode));
+      setTotpCode("");
+      setNotice("MFA verification completed for this session.");
+    } catch (reason) {
+      setError(reason instanceof ApiError ? reason : new ApiError("TOTP_VERIFY_FAILED", "Could not verify the MFA code."));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return <Page eyebrow="SECURITY" title="Security">
+    {error && <div className="banner error"><b>{error.code}</b><span>{error.message}</span></div>}
+    {notice && <div className="banner"><span>{notice}</span></div>}
+    <div className="detail-grid"><section>
+      <Panel title="Current session"><dl className="metadata"><dt>User</dt><dd>{session.username}</dd><dt>Role</dt><dd>{session.role}</dd><dt>Device</dt><dd><code>{session.device_id}</code></dd><dt>Device trust</dt><dd><Status value={session.device_trust} /></dd><dt>Authentication</dt><dd>{session.authentication_strength}</dd></dl><button className="danger" onClick={logout} disabled={busy !== null}>Sign out</button></Panel>
+      <Panel title="Passkeys and MFA"><p className="muted">Passkey creation and verification are performed by the browser authenticator and verified by the server.</p><button onClick={registerPasskey} disabled={busy !== null}>{busy === "passkey" ? "Waiting for passkey..." : "Register another passkey"}</button><div className="dialog-actions"><button className="secondary" onClick={beginTotp} disabled={busy !== null}>Enroll TOTP MFA</button></div>{totp && <form className="run-form" onSubmit={confirmTotp}><p>Scan this enrollment URI with an authenticator, then enter its current code. The enrollment secret is shown only for this confirmation.</p><code>{totp.otpauth_uri}</code><label>Authenticator code<input required inputMode="numeric" pattern="[0-9]{6,8}" value={totpCode} onChange={(event) => setTotpCode(event.target.value)} /></label><button disabled={busy !== null}>{busy === "totp-confirm" ? "Confirming..." : "Confirm MFA"}</button></form>}<form className="run-form" onSubmit={verifyTotp}><label>Verify MFA for this session<input required inputMode="numeric" pattern="[0-9]{6,8}" value={totpCode} onChange={(event) => setTotpCode(event.target.value)} /></label><button className="secondary" disabled={busy !== null}>Verify code</button></form></Panel>
+      <Panel title="Devices"><Resource result={devices}>{(items: SecurityDevice[]) => items.length ? <div className="run-list">{items.map((device) => <div key={device.id}><Status value={device.revoked_at ? "revoked" : device.trust} /><b>{device.display_name}</b><code>{device.id}</code><span className="muted">Last authenticated: {time(device.last_authenticated_at)}</span><div className="dialog-actions">{!device.revoked_at && <><button className="secondary" onClick={() => action(`trust:${device.id}`, () => api.trustDevice(device.id), devices.refresh)} disabled={busy !== null}>Trust</button><button className="danger" onClick={() => action(`revoke-device:${device.id}`, () => api.revokeDevice(device.id), devices.refresh)} disabled={busy !== null}>Revoke</button></>}</div></div>)}</div> : <Empty>No registered devices.</Empty>}</Resource></Panel>
+    </section><section>
+      <Panel title="Emergency lockdown"><Resource result={lockdown}>{(state: Lockdown) => <><p><Status value={state.active ? "active" : "inactive"} /> Updated {time(state.updated_at)}</p><p className="muted">Lockdown revokes temporary authority server-side. It does not erase audit history.</p><button className={state.active ? "secondary" : "danger"} onClick={() => action("lockdown", () => state.active ? api.deactivateLockdown() : api.activateLockdown(), lockdown.refresh)} disabled={busy !== null}>{state.active ? "Deactivate lockdown" : "Activate lockdown"}</button></>}</Resource></Panel>
+      <Panel title="Active grants"><Resource result={grants}>{(items: Grant[]) => items.length ? <div className="run-list">{items.map((grant) => <div key={grant.id}><Status value={grant.status} /><b>{grant.action}</b><code>{grant.id}</code><span>{grant.subject} / {grant.target ?? "no target"}</span><span className="muted">Expires {new Date(grant.expires_at).toLocaleString()}</span>{!grant.revoked_at && <button className="danger" onClick={() => action(`revoke-grant:${grant.id}`, () => api.revokeGrant(grant.id), grants.refresh)} disabled={busy !== null}>Revoke</button>}</div>)}</div> : <Empty>No grants are active.</Empty>}</Resource></Panel>
+      <Panel title="Vault metadata"><p className="muted">Only credential metadata is listed. Stored secret values are never returned by this interface.</p><form className="run-form" onSubmit={createVaultCredential}><label>Name<input required value={vaultName} onChange={(event) => setVaultName(event.target.value)} /></label><label>Type<input required value={vaultType} onChange={(event) => setVaultType(event.target.value)} /></label><label>Secret<input required type="password" value={vaultSecret} onChange={(event) => setVaultSecret(event.target.value)} autoComplete="off" /></label><button disabled={busy !== null}>Store credential</button></form><Resource result={vault}>{(items: VaultCredential[]) => items.length ? <div className="run-list">{items.map((credential) => <div key={credential.id}><b>{credential.name}</b><code>{credential.credential_type}</code><Status value={credential.revoked_at ? "revoked" : "active"} />{!credential.revoked_at && <button className="danger" onClick={() => action(`revoke-vault:${credential.id}`, () => api.revokeVaultCredential(credential.id), vault.refresh)} disabled={busy !== null}>Revoke</button>}</div>)}</div> : <Empty>No vault metadata available.</Empty>}</Resource></Panel>
+      <Panel title="Security audit"><Resource result={audit}>{(items: SecurityAudit[]) => items.length ? <ol className="timeline">{items.map((entry) => <li key={entry.id}><time>{time(entry.created_at)}</time><div><b>{entry.event_type}</b><span>{entry.result} {entry.target ? `/ ${entry.target}` : ""}</span></div></li>)}</ol> : <Empty>No security audit events.</Empty>}</Resource></Panel>
+    </section></div>
+  </Page>;
+}
 
 function Resource<T>({ result, children }: { result: { data: T | null; error: ApiError | null; loading: boolean; refresh: () => void }; children: (data: T) => React.ReactNode }) { if (result.loading) return <Loading />; if (result.error) return <ErrorState error={result.error} retry={result.refresh} />; if (result.data === null) return <Empty>No data returned.</Empty>; return <>{children(result.data)}</>; }
 

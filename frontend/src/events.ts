@@ -23,8 +23,7 @@ export class EventClient {
   private open(): void {
     this.onState("reconnecting");
     const baseUrl = import.meta.env.VITE_AGENTGRAPH_WS_URL || `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/events`;
-    const encodedIdentity = btoa(eventSocketConfig.identity).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
-    this.socket = new WebSocket(baseUrl, `agentgraph.identity.${encodedIdentity}`);
+    this.socket = new WebSocket(baseUrl);
     this.socket.onopen = () => { this.attempts = 0; this.onState("connected"); };
     this.socket.onmessage = (message) => {
       try {

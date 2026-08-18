@@ -9,12 +9,15 @@ dependencies = [
   "fastapi>=0.115,<1",
   "httpx>=0.28,<1",
   "langgraph>=1.0,<2",
-    "pydantic-settings>=2.6,<3",
-    "pillow>=11.0,<13",
-    "python-multipart>=0.0.20,<1",
-    "sqlalchemy>=2.0,<3",
-    "uvicorn>=0.32,<1",
-    "websockets>=15,<16",
+  "pydantic-settings>=2.6,<3",
+  "pillow>=11.0,<13",
+  "python-multipart>=0.0.20,<1",
+  "sqlalchemy>=2.0,<3",
+  "uvicorn>=0.32,<1",
+  "websockets>=15,<16",
+  "cryptography>=44,<46",
+  "pyotp>=2.9,<3",
+  "webauthn>=2.6,<3",
 ]
 
 [dependency-groups]

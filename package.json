@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@11.16.0",
   "scripts": {
-    "check": "node scripts/check-phase10.mjs",
+    "check": "node scripts/check-phase11a.mjs",
     "dev": "pnpm --dir frontend dev",
     "build": "pnpm --dir frontend build",
     "frontend:check": "pnpm --dir frontend check"

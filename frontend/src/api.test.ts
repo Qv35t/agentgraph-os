@@ -1,11 +1,26 @@
 import { describe, expect, it, vi } from "vitest";
-import { api } from "./api";
+import { api, setCsrfToken } from "./api";
 
 describe("remote API client", () => {
   it("parses a successful response", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: "ok" }), { status: 200 })));
 
     await expect(api.health()).resolves.toEqual({ status: "ok" });
+  });
+
+  it("uses cookie sessions and in-memory CSRF tokens without an identity header", async () => {
+    setCsrfToken("csrf-token");
+    const run = { id: "run-1", agent_id: "agent-1", status: "cancelled", input_text: "task", output_text: null, error: null, created_at: "2026-08-18T00:00:00Z", started_at: null, finished_at: null, provider_id: null, model_id: null, finish_reason: null, input_tokens: null, output_tokens: null, total_tokens: null, latency_ms: null };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(run), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await api.stopRun("run-1");
+
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const headers = request.headers as Headers;
+    expect(request.credentials).toBe("include");
+    expect(headers.get("X-AgentGraph-CSRF")).toBe("csrf-token");
+    expect(headers.get("X-AgentGraph-Identity")).toBeNull();
   });
 
   it("normalizes backend error envelopes", async () => {

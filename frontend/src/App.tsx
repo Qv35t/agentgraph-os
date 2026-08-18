@@ -1,10 +1,10 @@
 import { useEffect, useEffectEvent, useState } from "react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
-import { Activity, Bot, Boxes, CheckSquare, CircuitBoard, Eye, FolderKanban, HelpCircle, PanelLeftClose, PanelLeftOpen, Radio, Server, Settings, Sparkles } from "lucide-react";
-import { api, ApiError } from "./api";
+import { Activity, Bot, Boxes, CheckSquare, CircuitBoard, Eye, FolderKanban, HelpCircle, PanelLeftClose, PanelLeftOpen, Radio, Server, Settings, ShieldCheck, Sparkles } from "lucide-react";
+import { api, ApiError, onAuthenticationFailure, setCsrfToken } from "./api";
 import { EventClient, type ConnectionState } from "./events";
-import type { RuntimeEvent } from "./contracts";
-import { AgentsPage, DashboardPage, EventsPage, ProjectPage, ProjectsPage, ProvidersPage, RunPage, ApprovalsPage, SettingsPage, VisionPage, LexiPage, NodesPage } from "./pages";
+import type { AuthSession, RuntimeEvent } from "./contracts";
+import { AgentsPage, AuthenticationPage, DashboardPage, EventsPage, ProjectPage, ProjectsPage, ProvidersPage, RunPage, ApprovalsPage, SecurityPage, SettingsPage, VisionPage, LexiPage, NodesPage } from "./pages";
 import { HelpPage } from "./help";
 import { LanguageProvider, useLanguage } from "./i18n";
 
@@ -18,10 +18,40 @@ export type AppState = {
 };
 
 export function App() {
-  return <LanguageProvider><Workspace /></LanguageProvider>;
+  return <LanguageProvider><AuthenticationBoundary /></LanguageProvider>;
 }
 
-function Workspace() {
+function AuthenticationBoundary() {
+  const [session, setSession] = useState<AuthSession | null>(null);
+  const [loading, setLoading] = useState(true);
+  const refreshSession = useEffectEvent(async () => {
+    try {
+      setSession(await api.session());
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.status !== 401) return;
+      setCsrfToken(null);
+      setSession(null);
+    } finally {
+      setLoading(false);
+    }
+  });
+  const unauthenticate = useEffectEvent(() => {
+    setCsrfToken(null);
+    setSession(null);
+    setLoading(false);
+  });
+
+  useEffect(() => {
+    refreshSession();
+    return onAuthenticationFailure(unauthenticate);
+  }, [refreshSession, unauthenticate]);
+
+  if (loading) return <div className="state"><Radio className="spin" /> Checking local session...</div>;
+  if (!session) return <AuthenticationPage onAuthenticated={setSession} />;
+  return <Workspace session={session} onSessionUpdated={setSession} onUnauthenticated={unauthenticate} />;
+}
+
+function Workspace({ session, onSessionUpdated, onUnauthenticated }: { session: AuthSession; onSessionUpdated: (session: AuthSession) => void; onUnauthenticated: () => void }) {
   const { locale, setLocale, text } = useLanguage();
   const [events, setEvents] = useState<RuntimeEvent[]>([]);
   const [connection, setConnection] = useState<ConnectionState>("disconnected");
@@ -48,7 +78,7 @@ function Workspace() {
   const nav = [
     ["/", text.nav.dashboard, CircuitBoard], ["/projects", text.nav.projects, FolderKanban], ["/agents", text.nav.agents, Bot],
     ["/approvals", text.nav.approvals, CheckSquare], ["/providers", text.nav.providers, Boxes], ["/vision", text.nav.vision, Eye], ["/lexi", text.nav.lexi, Sparkles],
-    ["/nodes", text.nav.nodes, Server], ["/events", text.nav.events, Activity], ["/settings", text.nav.settings, Settings], ["/help", text.nav.help, HelpCircle],
+    ["/nodes", text.nav.nodes, Server], ["/events", text.nav.events, Activity], ["/security", "Security", ShieldCheck], ["/settings", text.nav.settings, Settings], ["/help", text.nav.help, HelpCircle],
   ] as const;
   return (
     <div className={`app-shell ${sidebarOpen ? "sidebar-open" : ""}`}>
@@ -77,6 +107,7 @@ function Workspace() {
           <Route path="/lexi" element={<LexiPage state={state} />} />
           <Route path="/nodes" element={<NodesPage />} />
           <Route path="/events" element={<EventsPage state={state} />} />
+          <Route path="/security" element={<SecurityPage session={session} onSessionUpdated={onSessionUpdated} onUnauthenticated={onUnauthenticated} />} />
           <Route path="/settings" element={<SettingsPage state={state} />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

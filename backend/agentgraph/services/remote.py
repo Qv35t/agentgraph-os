@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from contextvars import ContextVar, Token
 from datetime import datetime
 from uuid import UUID, uuid4
 
@@ -25,18 +26,24 @@ class AuthorizationError(Exception):
     pass
 
 
+_request_principal: ContextVar[Principal | None] = ContextVar("request_principal", default=None)
+
+
+def set_request_principal(principal: Principal | None) -> Token[Principal | None]:
+    return _request_principal.set(principal)
+
+
 class AuthorizationService:
     def __init__(self, remote_enabled: bool, policies_json: str) -> None:
         self._remote_enabled = remote_enabled
         self._policies = _parse_policies(policies_json)
 
     def principal(self, identity: str | None) -> Principal:
-        if not self._remote_enabled or identity is None:
-            raise AuthorizationError("Remote control is disabled")
-        permissions = self._policies.get(identity)
-        if permissions is None:
-            raise AuthorizationError("Remote identity is not authorized")
-        return Principal(identity=identity, permissions=permissions)
+        del identity
+        principal = _request_principal.get()
+        if principal is None:
+            raise AuthorizationError("Authentication is required")
+        return principal
 
     @staticmethod
     def require(principal: Principal, permission: Permission) -> None:

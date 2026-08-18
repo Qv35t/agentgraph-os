@@ -349,3 +349,169 @@ class LexiResponse(BaseModel):
     @classmethod
     def from_agent(cls, agent: Agent | None) -> "LexiResponse":
         return cls(installed=agent is not None, agent=AgentResponse.from_domain(agent) if agent else None)
+
+
+class BootstrapRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    username: str = Field(min_length=1, max_length=200, pattern=r"^[A-Za-z0-9_.-]+$")
+    bootstrap_secret: str = Field(min_length=32, max_length=512)
+    device_name: str = Field(min_length=1, max_length=200)
+
+
+class PasskeyRegistrationOptionsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    device_name: str = Field(min_length=1, max_length=200)
+
+
+class PasskeyAuthenticationOptionsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    username: str = Field(min_length=1, max_length=200, pattern=r"^[A-Za-z0-9_.-]+$")
+
+
+class PasskeyVerificationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    challenge_id: str = Field(min_length=1, max_length=36)
+    credential: dict[str, Any]
+
+
+class WebAuthnOptionsResponse(BaseModel):
+    challenge_id: str
+    options: dict[str, Any]
+
+
+class AuthPrincipalResponse(BaseModel):
+    user_id: str
+    username: str
+    role: str
+    session_id: str
+    device_id: str
+    device_trust: str
+    authentication_strength: str
+    csrf_token: str
+
+
+class TotpEnrollmentResponse(BaseModel):
+    secret: str
+    otpauth_uri: str
+
+
+class TotpConfirmRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    secret: str = Field(min_length=16, max_length=128)
+    code: str = Field(pattern=r"^\d{6,8}$")
+
+
+class TotpVerifyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: str = Field(pattern=r"^\d{6,8}$")
+
+
+class DeviceResponse(BaseModel):
+    id: str
+    display_name: str
+    trust: str
+    revoked_at: datetime | None
+    last_authenticated_at: datetime | None
+    created_at: datetime
+
+
+class RenameDeviceRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    display_name: str = Field(min_length=1, max_length=200)
+
+
+class CreateSecurityApprovalRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    action: str = Field(min_length=1, max_length=200)
+    reason: str = Field(min_length=1, max_length=10_000)
+    scope: dict[str, Any] = Field(default_factory=dict)
+    expires_in_seconds: int = Field(default=300, gt=0, le=86_400)
+    target: str | None = Field(default=None, max_length=500)
+    run_id: str | None = Field(default=None, max_length=36)
+    task_ref: str | None = Field(default=None, max_length=100)
+    risk: str | None = Field(default=None, max_length=30)
+
+
+class DecideSecurityApprovalRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    decision: Literal["allow_once", "allow_for_task", "reject"]
+
+
+class SecurityApprovalResponse(BaseModel):
+    id: str
+    project_id: str
+    requested_by: str
+    action: str
+    target: str | None
+    run_id: str | None
+    task_ref: str | None
+    risk: str | None
+    reason: str
+    scope: dict[str, Any]
+    status: str
+    decision: str | None
+    expires_at: datetime
+    decided_at: datetime | None
+    created_at: datetime
+
+
+class GrantResponse(BaseModel):
+    id: str
+    subject: str
+    action: str
+    target: str | None
+    run_id: str | None
+    task_ref: str | None
+    status: str
+    expires_at: datetime
+    revoked_at: datetime | None
+    created_at: datetime
+
+
+class LockdownResponse(BaseModel):
+    active: bool
+    updated_at: datetime
+
+
+class SecurityAuditResponse(BaseModel):
+    id: str
+    event_type: str
+    actor_user_id: str | None
+    session_id: str | None
+    device_id: str | None
+    target: str | None
+    result: str
+    metadata: dict[str, Any]
+    created_at: datetime
+
+
+class CreateVaultCredentialRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=200)
+    credential_type: str = Field(min_length=1, max_length=100)
+    secret: str = Field(min_length=1, max_length=100_000)
+
+
+class ReplaceVaultCredentialRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    secret: str = Field(min_length=1, max_length=100_000)
+
+
+class VaultCredentialResponse(BaseModel):
+    id: str
+    name: str
+    credential_type: str
+    revoked_at: datetime | None
+    created_at: datetime
+    updated_at: datetime

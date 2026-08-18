@@ -148,3 +148,59 @@ def test_phase9_database_upgrades_and_downgrades_phase10_recovery_schema(tmp_pat
     with sqlite3.connect(database_path) as connection:
         tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert "run_checkpoints" not in tables
+
+
+def test_phase10_database_upgrades_and_downgrades_phase11_security_schema(tmp_path: Path) -> None:
+    database_path = tmp_path / "phase10.db"
+    database_url = f"sqlite+aiosqlite:///{database_path}"
+    upgrade_database(database_url, "20260817_0007")
+    upgrade_database(database_url)
+    expected_tables = {
+        "users",
+        "security_devices",
+        "auth_sessions",
+        "passkey_credentials",
+        "auth_challenges",
+        "second_factors",
+        "security_approvals",
+        "security_grants",
+        "vault_credentials",
+        "security_audit_events",
+        "security_state",
+    }
+    expected_indexes = {
+        "ix_security_devices_user_id",
+        "ix_auth_sessions_user_id",
+        "ix_auth_sessions_device_id",
+        "ix_auth_sessions_expires_at",
+        "ix_passkey_credentials_user_id",
+        "ix_passkey_credentials_device_id",
+        "ix_auth_challenges_user_id",
+        "ix_security_approvals_status_expires_at",
+        "ix_security_grants_subject_action_target_run_task_expires_at",
+        "ix_security_audit_events_event_type",
+        "ix_security_audit_events_created_at",
+    }
+    with sqlite3.connect(database_path) as connection:
+        tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        indexes = {
+            row[0]
+            for table in expected_tables
+            for row in connection.execute(f"SELECT name FROM pragma_index_list('{table}')")
+        }
+    assert expected_tables.issubset(tables)
+    assert expected_indexes.issubset(indexes)
+
+    config = Config(str(BACKEND_ROOT / "alembic.ini"))
+    config.set_main_option("script_location", str(BACKEND_ROOT / "alembic"))
+    config.set_main_option("sqlalchemy.url", database_url)
+    command.downgrade(config, "20260817_0007")
+    with sqlite3.connect(database_path) as connection:
+        downgraded = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    assert not expected_tables & downgraded
+    assert {"run_checkpoints", "run_action_ledger_entries", "run_recovery_decisions"}.issubset(downgraded)
+
+    upgrade_database(database_url)
+    with sqlite3.connect(database_path) as connection:
+        reupgraded = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    assert expected_tables.issubset(reupgraded)

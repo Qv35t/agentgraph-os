@@ -19,12 +19,12 @@ from agentgraph.services.errors import LifecycleConflictError
 from agentgraph.services.manager import AgentManager
 from agentgraph.settings import Settings
 
-from .conftest import upgrade_database
+from .conftest import seed_test_session, upgrade_database
 
 
 def create_agent(client: TestClient, name: str = "Planner") -> dict[str, object]:
     response = client.post(
-        "/api/agents/create",
+        "/api/v1/agents",
         json={"name": name, "description": "Deterministic lifecycle test"},
     )
     assert response.status_code == 201
@@ -34,7 +34,7 @@ def create_agent(client: TestClient, name: str = "Planner") -> dict[str, object]
 def wait_for_terminal_run(client: TestClient, run_id: str) -> dict[str, object]:
     deadline = time.monotonic() + 3
     while time.monotonic() < deadline:
-        response = client.get(f"/api/runs/{run_id}")
+        response = client.get(f"/api/v1/runs/{run_id}")
         assert response.status_code == 200
         payload = response.json()
         if payload["status"] in {"succeeded", "failed", "cancelled"}:
@@ -44,25 +44,21 @@ def wait_for_terminal_run(client: TestClient, run_id: str) -> dict[str, object]:
 
 
 def test_health_and_agent_crud(client: TestClient) -> None:
-    assert client.get("/health").json() == {"status": "ok"}
+    assert client.get("/api/v1/health").json() == {"status": "ok"}
     agent = create_agent(client)
 
-    listed = client.get("/api/agents")
+    listed = client.get("/api/v1/agents")
     assert listed.status_code == 200
     assert [item["id"] for item in listed.json()] == [agent["id"]]
 
-    fetched = client.get(f"/api/agents/{agent['id']}")
+    fetched = client.get(f"/api/v1/agents/{agent['id']}")
     assert fetched.status_code == 200
     assert fetched.json()["status"] == "idle"
-
-    deleted = client.delete(f"/api/agents/{agent['id']}")
-    assert deleted.status_code == 204
-    assert client.get(f"/api/agents/{agent['id']}").status_code == 404
 
 
 def test_run_executes_real_compiled_langgraph(client: TestClient) -> None:
     agent = create_agent(client)
-    started = client.post("/api/agents/run", json={"agent_id": agent["id"], "input_text": "hello"})
+    started = client.post(f"/api/v1/agents/{agent['id']}/runs", json={"input_text": "hello"})
     assert started.status_code == 202
 
     run = wait_for_terminal_run(client, started.json()["id"])
@@ -73,7 +69,7 @@ def test_run_executes_real_compiled_langgraph(client: TestClient) -> None:
     assert run["provider_id"] == "deterministic"
     assert run["model_id"] == "phase2"
 
-    history = client.get(f"/api/agents/{agent['id']}/runs")
+    history = client.get(f"/api/v1/agents/{agent['id']}/runs")
     assert history.status_code == 200
     assert [item["id"] for item in history.json()] == [run["id"]]
 
@@ -83,20 +79,21 @@ def test_active_run_conflict_and_real_cancellation(database_url: str) -> None:
     upgrade_database(database_url)
 
     with TestClient(create_app(settings, DeterministicGraphRuntime())) as client:
+        seed_test_session(client, settings)
         agent = create_agent(client)
-        started = client.post("/api/agents/run", json={"agent_id": agent["id"], "input_text": "wait"})
+        started = client.post(f"/api/v1/agents/{agent['id']}/runs", json={"input_text": "wait"})
         assert started.status_code == 202
         run_id = started.json()["id"]
 
-        second = client.post("/api/agents/run", json={"agent_id": agent["id"], "input_text": "again"})
+        second = client.post(f"/api/v1/agents/{agent['id']}/runs", json={"input_text": "again"})
         assert second.status_code == 409
 
-        stopped = client.post(f"/api/runs/{run_id}/stop")
+        stopped = client.post(f"/api/v1/runs/{run_id}/stop")
         assert stopped.status_code == 200
         assert stopped.json()["status"] == "cancelled"
         assert stopped.json()["finished_at"] is not None
 
-        agent_status = client.get(f"/api/agents/{agent['id']}/status")
+        agent_status = client.get(f"/api/v1/agents/{agent['id']}")
         assert agent_status.json()["status"] == "idle"
 
 
@@ -234,10 +231,12 @@ def test_stop_run_timeout_leaves_live_run_active(database_url: str) -> None:
 
 def test_persistence_survives_application_restart(settings: Settings) -> None:
     with TestClient(create_app(settings, DeterministicGraphRuntime())) as first_client:
+        seed_test_session(first_client, settings)
         agent = create_agent(first_client, name="Persistent")
 
     with TestClient(create_app(settings, DeterministicGraphRuntime())) as second_client:
-        fetched = second_client.get(f"/api/agents/{agent['id']}")
+        seed_test_session(second_client, settings)
+        fetched = second_client.get(f"/api/v1/agents/{agent['id']}")
         assert fetched.status_code == 200
         assert fetched.json()["name"] == "Persistent"
 
@@ -300,44 +299,44 @@ def test_startup_recovers_stale_run(database_url: str) -> None:
 
     asyncio.run(seed_stale_run())
 
-    with TestClient(
-        create_app(Settings(database_url=database_url, legacy_api_enabled=True), DeterministicGraphRuntime())
-    ) as client:
-        recovered_run = client.get(f"/api/runs/{run_id}")
+    settings = Settings(database_url=database_url, legacy_api_enabled=True)
+    with TestClient(create_app(settings, DeterministicGraphRuntime())) as client:
+        seed_test_session(client, settings)
+        recovered_run = client.get(f"/api/v1/runs/{run_id}")
         assert recovered_run.status_code == 200
         assert recovered_run.json()["status"] == "failed"
         assert recovered_run.json()["error"] == "Run interrupted by application restart"
         assert recovered_run.json()["finished_at"] is not None
 
-        recovered_agent = client.get(f"/api/agents/{agent_id}")
+        recovered_agent = client.get(f"/api/v1/agents/{agent_id}")
         assert recovered_agent.json()["status"] == "error"
 
-        recovered_queued_run = client.get(f"/api/runs/{queued_run_id}")
+        recovered_queued_run = client.get(f"/api/v1/runs/{queued_run_id}")
         assert recovered_queued_run.json()["status"] == "failed"
         assert recovered_queued_run.json()["finished_at"] is not None
-        recovered_queued_agent = client.get(f"/api/agents/{queued_agent_id}")
+        recovered_queued_agent = client.get(f"/api/v1/agents/{queued_agent_id}")
         assert recovered_queued_agent.json()["status"] == "error"
 
 
 def test_invalid_input_and_missing_entities(client: TestClient) -> None:
-    assert client.post("/api/agents/create", json={"name": ""}).status_code == 422
-    assert client.post("/api/agents/create", json={"name": "   "}).status_code == 422
+    assert client.post("/api/v1/agents", json={"name": ""}).status_code == 422
+    assert client.post("/api/v1/agents", json={"name": "   "}).status_code == 422
     assert (
         client.post(
-            "/api/agents/create", json={"name": "Unsafe", "graph_definition": {"api_key": "secret"}}
+            "/api/v1/agents", json={"name": "Unsafe", "graph_definition": {"api_key": "secret"}}
         ).status_code
         == 422
     )
     assert (
-        client.post("/api/agents/create", json={"name": "Bad model", "model_ref": "unknown://model"}).status_code == 422
+        client.post("/api/v1/agents", json={"name": "Bad model", "model_ref": "unknown://model"}).status_code == 422
     )
-    assert client.post("/api/agents/run", json={"agent_id": str(uuid4()), "input_text": "x"}).status_code == 404
-    assert client.get(f"/api/runs/{uuid4()}").status_code == 404
+    assert client.post(f"/api/v1/agents/{uuid4()}/runs", json={"input_text": "x"}).status_code == 404
+    assert client.get(f"/api/v1/runs/{uuid4()}").status_code == 404
 
 
 def test_provider_visibility_keeps_backend_health_independent(client: TestClient) -> None:
-    assert client.get("/health").json() == {"status": "ok"}
-    response = client.get("/api/providers")
+    assert client.get("/api/v1/health").json() == {"status": "ok"}
+    response = client.get("/api/v1/providers")
     assert response.status_code == 200
     providers = {item["provider_id"]: item for item in response.json()}
     assert set(providers) == {"ollama", "opencode", "openrouter"}
